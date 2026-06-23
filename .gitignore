@@ -1,0 +1,5 @@
+# Root and server specific
+/frontend/node_modules
+/backend/.venv
+/backend/__pycache__
+/backend/environments

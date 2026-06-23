@@ -1,0 +1,110 @@
+[
+  {
+    "tool": "bonds",
+    "params_summary": "1 single \u00b7 0 multi \u00b7 3, 8",
+    "status": "done",
+    "ts": "2026-06-22T17:07:42.262Z",
+    "env": "QA2",
+    "ok": 1,
+    "total": 1,
+    "dur_seconds": 1.474,
+    "params_raw": {
+      "single": 1,
+      "multi": 0,
+      "tranches_per_multi": [
+        3,
+        8
+      ],
+      "sleep_ms": 100,
+      "currency": null,
+      "dry_run": false,
+      "ref_dir": "C:\\python\\PBI_Test_Utility\\backend\\reference\\bonds"
+    },
+    "fail": 0,
+    "id": "02a9a7dd"
+  },
+  {
+    "tool": "interest",
+    "params_summary": "TRPA \u00b7 8 true \u00b7 4 false",
+    "status": "done",
+    "ts": "2026-06-22T16:57:27.993Z",
+    "env": "QA2",
+    "ok": 12,
+    "total": 12,
+    "dur_seconds": 119.406,
+    "params_raw": {
+      "tranche_name": "34b0db48-159c-4f6d-af2a-f137819ef6c0",
+      "is_modelled_true": 8,
+      "is_modelled_false": 4,
+      "pair_closeness_pct": 1,
+      "total_mismatch_pct": 0,
+      "delay_seconds": 10,
+      "strategy": false,
+      "dry_run": false,
+      "is_modelled_as_string": true,
+      "sizing": {
+        "min_piece": 2000,
+        "increment_size": 1000
+      },
+      "quantity_ranges": {
+        "true_min": 100000,
+        "true_max": 1200000,
+        "false_min": 600000,
+        "false_max": 1600000
+      },
+      "event_defaults": {
+        "MARKET_TYPE": "Market",
+        "ORDER_LIMIT": null,
+        "TRADE_DESK": null,
+        "ENTITY": "TRPA",
+        "COMMENT": "V15 Or vs St",
+        "REGISTRATION_TYPE": null,
+        "REGULATION_SUBCATEGORY": null
+      }
+    },
+    "fail": 0,
+    "id": "a0e0b026"
+  },
+  {
+    "tool": "interest",
+    "params_summary": "TRPA \u00b7 2 true \u00b7 1 false",
+    "status": "done",
+    "ts": "2026-06-22T15:34:09.278Z",
+    "env": "QA2",
+    "ok": 3,
+    "total": 3,
+    "dur_seconds": 10.901,
+    "params_raw": {
+      "tranche_name": "a17db079-bf45-40ae-af7d-ec9dd8df68f1LTLO1",
+      "is_modelled_true": 2,
+      "is_modelled_false": 1,
+      "pair_closeness_pct": 2,
+      "total_mismatch_pct": 0,
+      "delay_seconds": 4,
+      "strategy": false,
+      "dry_run": false,
+      "is_modelled_as_string": true,
+      "sizing": {
+        "min_piece": 20000,
+        "increment_size": 20000
+      },
+      "quantity_ranges": {
+        "true_min": 100000,
+        "true_max": 1200000,
+        "false_min": 600000,
+        "false_max": 1600000
+      },
+      "event_defaults": {
+        "MARKET_TYPE": "Market",
+        "ORDER_LIMIT": null,
+        "TRADE_DESK": null,
+        "ENTITY": "TRPA",
+        "COMMENT": "V15 Or vs St",
+        "REGISTRATION_TYPE": null,
+        "REGULATION_SUBCATEGORY": null
+      }
+    },
+    "fail": 0,
+    "id": "7556c374"
+  }
+]

@@ -1,0 +1,87 @@
+{
+  "active": "QA2",
+  "environments": {
+    "QA1": {
+      "host_name": "qa-trowe-pbi1.cddev.genesis.global",
+      "verify_ssl": true,
+      "credentials": {
+        "bonds_loans": {
+          "username": "MoBilal",
+          "password": "Password11*"
+        },
+        "interest": {
+          "username": "TRPUser",
+          "password": "Password11*"
+        }
+      }
+    },
+    "QA2": {
+      "host_name": "qa-trowe-pbi2.cddev.genesis.global",
+      "verify_ssl": true,
+      "credentials": {
+        "bonds_loans": {
+          "username": "Rahulk",
+          "password": "Password11*"
+        },
+        "interest": {
+          "username": "TRPUser",
+          "password": "Password11*"
+        }
+      }
+    }
+  },
+  "reference_dirs": {
+    "bonds": "C:\\python\\PBI_Test_Utility\\backend\\reference\\bonds",
+    "loans": "C:\\python\\PBI_Test_Utility\\backend\\reference\\loans"
+  },
+  "tool_defaults": {
+    "bonds": {
+      "single": 0,
+      "multi": 1,
+      "tranches_per_multi": [
+        3,
+        8
+      ],
+      "sleep_ms": 100
+    },
+    "loans": {
+      "single": 3,
+      "multi": 0,
+      "delay": 15,
+      "tranches_per_multi": [
+        2,
+        3
+      ],
+      "deal_query_wait": 6
+    },
+    "interest": {
+      "tranche_name": "12dbb95e-6d83-47e5-a9d9-2d416fae07d7",
+      "is_modelled_true": 9,
+      "is_modelled_false": 5,
+      "pair_closeness_pct": 2,
+      "total_mismatch_pct": 0,
+      "delay_seconds": 4,
+      "strategy": false,
+      "is_modelled_as_string": true,
+      "sizing": {
+        "min_piece": 10000,
+        "increment_size": 100000
+      },
+      "quantity_ranges": {
+        "true_min": 100000,
+        "true_max": 1200000,
+        "false_min": 600000,
+        "false_max": 1600000
+      },
+      "event_defaults": {
+        "MARKET_TYPE": "Market",
+        "ORDER_LIMIT": null,
+        "TRADE_DESK": null,
+        "ENTITY": "TRPA",
+        "COMMENT": "V15 Or vs St",
+        "REGISTRATION_TYPE": null,
+        "REGULATION_SUBCATEGORY": null
+      }
+    }
+  }
+}

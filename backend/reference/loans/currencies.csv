@@ -1,0 +1,11 @@
+country_name,country_code,currency,float_benchmark
+United Kingdom,GB,GBP,SONIA
+United States of America,US,USD,SOFR
+Norway,NO,EUR,ESTR
+Austria,AT,EUR,ESTR
+France,FR,EUR,ESTR
+Italy,IT,EUR,ESTR
+Switzerland,CH,CHF,TONA
+Australia,AU,AUD,AONIA
+Canada,CA,CAD,CORRA
+Singapore,SG,SGD,SORA

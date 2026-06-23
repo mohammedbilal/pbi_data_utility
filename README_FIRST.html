@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PBI Test Utility — README FIRST</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,500;9..40,700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ground:   #08090d;
+      --surface:  #10141d;
+      --raised:   #161c28;
+      --border:   #1a2130;
+      --border-mid: #232b3d;
+      --text:     #e7e9ee;
+      --text-2:   #8a95ac;
+      --text-3:   #55607a;
+      --sky:      #7dd3fc;
+      --sky-dim:  #38bdf8;
+      --sky-glow: rgba(125,211,252,.14);
+      --sky-glow-strong: rgba(125,211,252,.28);
+      --emerald:  #4ade80;
+      --emerald-glow: rgba(74,222,128,.15);
+      --rose:     #fb7185;
+      --attention:#f59e0b;
+      --attention-glow: rgba(245,158,11,.14);
+      --display:  'DM Sans', system-ui, -apple-system, sans-serif;
+      --mono:     'JetBrains Mono', 'Cascadia Code', 'SF Mono', Consolas, monospace;
+      --max:      900px;
+    }
+
+    html { font-size: 15px; scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--display);
+      background: var(--ground);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 24px;
+      background: var(--ground);
+      border-bottom: 1px solid var(--border);
+      background-image: linear-gradient(180deg, var(--sky-glow) 0%, transparent 100%);
+    }
+
+    .logo-mark {
+      width: 30px; height: 30px;
+      flex: none;
+      border: 1.5px solid var(--sky);
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--sky);
+      box-shadow: 0 0 14px var(--sky-glow);
+      letter-spacing: .02em;
+    }
+
+    .header-text { display: flex; flex-direction: column; line-height: 1.25; }
+    .header-title { font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .header-sub {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .header-pill {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--sky);
+      background: var(--sky-glow);
+      border: 1px solid rgba(125,211,252,.25);
+      border-radius: 3px;
+      padding: 3px 8px;
+    }
+
+    /* ── Page shell ──────────────────────────────────────────── */
+    .page { max-width: var(--max); margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Hero / Boot sequence ────────────────────────────────── */
+    .hero { padding: 60px 0 52px; border-bottom: 1px solid var(--border); }
+
+    .boot-block {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--text-2);
+      line-height: 1.9;
+      margin-bottom: 40px;
+      min-height: 72px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .boot-line { display: flex; align-items: center; gap: 6px; }
+    .boot-prompt { color: var(--text-3); user-select: none; }
+    .boot-text { color: var(--text-2); }
+    .boot-text.ok { color: var(--emerald); }
+
+    .cursor {
+      display: inline-block;
+      width: 7px; height: 14px;
+      background: var(--sky);
+      border-radius: 1px;
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+    .cursor.hidden { opacity: 0; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    .hero-title { opacity: 0; transform: translateY(12px); transition: opacity .5s ease, transform .5s ease; }
+    .hero-title.visible { opacity: 1; transform: none; }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    h1 span { color: var(--sky); }
+
+    .hero-desc {
+      font-size: 1.05rem;
+      color: var(--text-2);
+      max-width: 580px;
+      line-height: 1.65;
+    }
+
+    /* ── Sections ────────────────────────────────────────────── */
+    .section { padding: 52px 0; border-bottom: 1px solid var(--border); }
+    .section:last-child { border-bottom: none; }
+
+    .section-eyebrow {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--sky-dim);
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 22px;
+      letter-spacing: -.01em;
+    }
+
+    p { color: var(--text-2); }
+
+    /* ── Engine cards ────────────────────────────────────────── */
+    .engine-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .engine-card {
+      background: var(--surface);
+      border: 1px solid var(--border-mid);
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .engine-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .engine-card.bonds::before    { background: linear-gradient(90deg, var(--sky-dim), transparent); }
+    .engine-card.loans::before    { background: linear-gradient(90deg, var(--emerald), transparent); }
+    .engine-card.interest::before { background: linear-gradient(90deg, var(--attention), transparent); }
+
+    .engine-tag {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      border-radius: 3px;
+      padding: 2px 7px;
+      display: inline-block;
+      margin-bottom: 12px;
+    }
+
+    .engine-card.bonds    .engine-tag { color: var(--sky-dim);  background: var(--sky-glow); }
+    .engine-card.loans    .engine-tag { color: var(--emerald);  background: var(--emerald-glow); }
+    .engine-card.interest .engine-tag { color: var(--attention);background: var(--attention-glow); }
+
+    .engine-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .engine-event {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      color: var(--text-3);
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+
+    .engine-desc { font-size: .875rem; color: var(--text-2); line-height: 1.55; }
+
+    /* ── Prerequisites ───────────────────────────────────────── */
+    .prereq-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .prereq-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .prereq-icon {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--sky);
+      background: var(--sky-glow);
+      border: 1px solid rgba(125,211,252,.2);
+      border-radius: 4px;
+      padding: 4px 7px;
+      flex: none;
+      margin-top: 1px;
+      white-space: nowrap;
+    }
+
+    .prereq-name  { font-size: .9rem; font-weight: 600; color: var(--text); }
+    .prereq-note  { font-size: .8rem; color: var(--text-3); margin-top: 2px; font-family: var(--mono); }
+
+    /* ── Steps ───────────────────────────────────────────────── */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+
+    .step {
+      display: flex;
+      gap: 22px;
+      padding: 0 0 32px;
+      position: relative;
+    }
+
+    .step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 14px; top: 32px; bottom: 0;
+      width: 1px;
+      background: var(--border-mid);
+    }
+
+    .step-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--sky);
+      background: var(--sky-glow);
+      border: 1px solid rgba(125,211,252,.25);
+      border-radius: 50%;
+      width: 29px; height: 29px;
+      display: flex; align-items: center; justify-content: center;
+      flex: none;
+      letter-spacing: .04em;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-body { padding-top: 3px; }
+
+    .step-body h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .step-body p { font-size: .9rem; color: var(--text-2); margin-bottom: 12px; }
+    .step-body p:last-child { margin-bottom: 0; }
+
+    /* ── Terminal / command blocks ───────────────────────────── */
+    .term {
+      background: #050609;
+      border: 1px solid var(--border-mid);
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+
+    .term-row { display: flex; align-items: baseline; gap: 8px; }
+    .term-row .prompt { color: var(--text-3); user-select: none; flex: none; }
+    .term-row .cmd    { color: var(--text); }
+    .term-row .comment{ color: var(--text-3); font-style: italic; }
+
+    .term code {
+      color: var(--sky);
+      background: none;
+      font-size: inherit;
+    }
+
+    .inline-code {
+      font-family: var(--mono);
+      font-size: .85em;
+      color: var(--sky);
+      background: var(--sky-glow);
+      border: 1px solid rgba(125,211,252,.15);
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+
+    /* ── Tab demo ────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--border-mid);
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 0;
+    }
+
+    .tab-btn {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 8px 14px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover  { color: var(--text-2); }
+    .tab-btn.active { color: var(--sky); border-bottom-color: var(--sky); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .tab-panel h3 {
+      font-size: .975rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .tab-panel p { font-size: .9rem; color: var(--text-2); margin-bottom: 10px; }
+    .tab-panel p:last-child { margin-bottom: 0; }
+
+    /* ── Stop block ──────────────────────────────────────────── */
+    .stop-block {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border-mid);
+      border-left: 3px solid var(--rose);
+      border-radius: 6px;
+      padding: 18px 20px;
+    }
+
+    .stop-icon {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--rose);
+      background: rgba(251,113,133,.12);
+      border: 1px solid rgba(251,113,133,.25);
+      border-radius: 4px;
+      padding: 4px 7px;
+      flex: none;
+      margin-top: 1px;
+    }
+
+    .stop-block h3 { font-size: .95rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .stop-block p  { font-size: .875rem; color: var(--text-2); }
+
+    /* ── Tips ────────────────────────────────────────────────── */
+    .tips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .tip-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px 20px;
+    }
+
+    .tip-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--attention);
+      margin-bottom: 8px;
+    }
+
+    .tip-card h3 { font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .tip-card p  { font-size: .85rem; color: var(--text-2); line-height: 1.55; }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    .site-footer {
+      border-top: 1px solid var(--border);
+      padding: 24px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .08em;
+      color: var(--text-3);
+    }
+
+    /* ── Motion reduction ────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      .hero-title { opacity: 1 !important; transform: none !important; transition: none !important; }
+      .cursor { animation: none !important; }
+    }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      h1 { font-size: 1.9rem; }
+      .site-header { padding: 0 16px; }
+      .page { padding: 0 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="logo-mark">PBI</div>
+    <div class="header-text">
+      <span class="header-title">PBI Test Utility</span>
+      <span class="header-sub">Genesis Global · TrOWE · Primary Bond Issuance</span>
+    </div>
+    <div class="header-pill">README FIRST</div>
+  </header>
+
+  <div class="page">
+
+    <!-- ── Hero: boot sequence ──────────────────────────────── -->
+    <section class="hero">
+      <div class="boot-block" id="boot-block" aria-hidden="true">
+        <div class="boot-line">
+          <span class="boot-prompt">$</span>
+          <span class="boot-text" id="t0"></span>
+        </div>
+        <div class="boot-line">
+          <span class="boot-prompt">$</span>
+          <span class="boot-text" id="t1"></span>
+        </div>
+        <div class="boot-line">
+          <span class="boot-prompt">$</span>
+          <span class="boot-text" id="t2"></span>
+        </div>
+        <span class="cursor" id="cursor"></span>
+      </div>
+
+      <div class="hero-title" id="hero-title">
+        <h1>PBI <span>Test Utility</span></h1>
+        <p class="hero-desc">
+          Generate synthetic bond, loan, and interest capture events against any TrOWE environment — without touching production data.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── What this is ─────────────────────────────────────── -->
+    <section class="section">
+      <div class="section-eyebrow">What this is</div>
+      <h2>Three engines. One interface.</h2>
+      <div class="engine-grid">
+        <div class="engine-card bonds">
+          <span class="engine-tag">Bonds</span>
+          <div class="engine-name">Bond Issuance</div>
+          <div class="engine-event">EVENT_NEW_ISSUANCE_DATA</div>
+          <p class="engine-desc">Posts new bond issuance events. Configure issuer, size, coupon, tenor, bookrunners, and currency — or pull values from reference CSVs.</p>
+        </div>
+        <div class="engine-card loans">
+          <span class="engine-tag">Loans</span>
+          <div class="engine-name">Loan Issuance</div>
+          <div class="engine-event">EVENT_CREATE_NEW_LOAN_ISSUANCE</div>
+          <p class="engine-desc">Posts loan issuance events with multi-tranche support. Tranches are linked automatically via <code>ALL_LOAN_DEAL</code>.</p>
+        </div>
+        <div class="engine-card interest">
+          <span class="engine-tag">Interest</span>
+          <div class="engine-name">Interest Capture</div>
+          <div class="engine-event">EVENT_INTEREST_CAPTURE</div>
+          <p class="engine-desc">Posts interest capture events for existing loan deals. Targets a running deal by ID and submits capture data.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Prerequisites ────────────────────────────────────── -->
+    <section class="section">
+      <div class="section-eyebrow">Before you start</div>
+      <h2>Prerequisites</h2>
+      <div class="prereq-row">
+        <div class="prereq-card">
+          <span class="prereq-icon">WIN</span>
+          <div>
+            <div class="prereq-name">Windows 10 or 11</div>
+            <div class="prereq-note">64-bit, any recent build</div>
+          </div>
+        </div>
+        <div class="prereq-card">
+          <span class="prereq-icon">PY</span>
+          <div>
+            <div class="prereq-name">Python 3.10 or later</div>
+            <div class="prereq-note">python.org — add to PATH</div>
+          </div>
+        </div>
+        <div class="prereq-card">
+          <span class="prereq-icon">NODE</span>
+          <div>
+            <div class="prereq-name">Node.js LTS</div>
+            <div class="prereq-note">nodejs.org — LTS release</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Getting started ──────────────────────────────────── -->
+    <section class="section">
+      <div class="section-eyebrow">Setup</div>
+      <h2>Getting started</h2>
+      <div class="steps">
+
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <h3>Get the folder</h3>
+            <p>Copy the <span class="inline-code">PBI_Test_Utility</span> folder to your machine — from a shared drive, git clone, or zip. Anywhere works; the app is fully self-contained.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <h3>Run Setup.bat — once</h3>
+            <p>Double-click <span class="inline-code">Setup.bat</span>. It creates a Python virtual environment and installs all backend and frontend packages. Takes around a minute on first run, skips everything that already exists on subsequent runs.</p>
+            <div class="term">
+              <div class="term-row">
+                <span class="prompt">[1/4]</span>
+                <span class="cmd">Creating Python virtual environment... <span style="color:var(--emerald)">OK</span></span>
+              </div>
+              <div class="term-row">
+                <span class="prompt">[2/4]</span>
+                <span class="cmd">Installing Python dependencies... <span style="color:var(--emerald)">OK</span></span>
+              </div>
+              <div class="term-row">
+                <span class="prompt">[3/4]</span>
+                <span class="cmd">Installing Node packages... <span style="color:var(--emerald)">OK</span></span>
+              </div>
+              <div class="term-row">
+                <span class="prompt">[4/4]</span>
+                <span class="cmd">Setup complete!</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-body">
+            <h3>Launch the app</h3>
+            <p>Double-click <span class="inline-code">Launch.vbs</span>. Both servers start silently in the background and your browser opens to <span class="inline-code">http://localhost:5173</span> within a couple of seconds. No terminal window.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">04</div>
+          <div class="step-body">
+            <h3>Configure an environment</h3>
+            <p>Open the <strong>Settings</strong> tab. Add at least one environment — give it a name, paste the host URL, and enter your credentials. The active environment is shown in the header and persists between sessions.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── The interface ─────────────────────────────────────── -->
+    <section class="section">
+      <div class="section-eyebrow">Reference</div>
+      <h2>The interface</h2>
+
+      <div class="tab-bar" role="tablist">
+        <button class="tab-btn active" role="tab" aria-selected="true"  data-tab="bonds">Bonds</button>
+        <button class="tab-btn"        role="tab" aria-selected="false" data-tab="loans">Loans</button>
+        <button class="tab-btn"        role="tab" aria-selected="false" data-tab="interest">Interest Capture</button>
+        <button class="tab-btn"        role="tab" aria-selected="false" data-tab="history">History</button>
+        <button class="tab-btn"        role="tab" aria-selected="false" data-tab="settings">Settings</button>
+      </div>
+
+      <div class="tab-panel active" id="panel-bonds">
+        <h3>Bond Issuance</h3>
+        <p>Configure and submit one or more <span class="inline-code">EVENT_NEW_ISSUANCE_DATA</span> events. Set issuer name, deal size, currency, coupon rate, tenor, and bookrunners. Values can come from reference CSVs under <span class="inline-code">backend/reference/bonds/</span>, or you can enter them manually.</p>
+        <p>The live log streams each event's result as it posts — green rows for ACKs, red for NACKs with the full error payload.</p>
+      </div>
+
+      <div class="tab-panel" id="panel-loans">
+        <h3>Loan Issuance</h3>
+        <p>Posts <span class="inline-code">EVENT_CREATE_NEW_LOAN_ISSUANCE</span> events. Supports multi-tranche deals: the first tranche creates an <span class="inline-code">ALL_LOAN_DEAL</span> master record, and subsequent tranches are linked to it automatically.</p>
+        <p>Several numeric fields (<span class="inline-code">SPREAD</span>, <span class="inline-code">YIELD</span>, <span class="inline-code">OID</span>) must be sent as strings per the server schema — the engine handles this for you.</p>
+      </div>
+
+      <div class="tab-panel" id="panel-interest">
+        <h3>Interest Capture</h3>
+        <p>Posts <span class="inline-code">EVENT_INTEREST_CAPTURE</span> events for an existing loan deal. Provide the deal ID and capture parameters. Useful for testing the full lifecycle after a loan issuance run.</p>
+      </div>
+
+      <div class="tab-panel" id="panel-history">
+        <h3>Run History</h3>
+        <p>Lists every run you've completed — tool, environment, timestamp, and outcome. Click any entry to prefill the form with the same parameters so you can repeat or tweak a test without re-entering values from scratch.</p>
+        <p>History is stored locally in <span class="inline-code">backend/history.json</span>.</p>
+      </div>
+
+      <div class="tab-panel" id="panel-settings">
+        <h3>Environments</h3>
+        <p>Add, edit, or remove named environments. Each environment stores: host URL, username, password, and an SSL verification toggle. The active environment is switched from the dropdown in the header — the change takes effect immediately for the next run.</p>
+        <p>Credentials are stored in plain text in <span class="inline-code">backend/environments.json</span> — this tool is for test environments only, never production.</p>
+      </div>
+    </section>
+
+    <!-- ── Stopping ──────────────────────────────────────────── -->
+    <section class="section">
+      <div class="section-eyebrow">Shutdown</div>
+      <h2>Stopping the app</h2>
+      <div class="stop-block">
+        <span class="stop-icon">STOP</span>
+        <div>
+          <h3>Double-click Stop-App.vbs</h3>
+          <p>Terminates both the FastAPI backend (port 8000) and the Vite frontend (port 5173). Safe to run at any time — won't affect other processes on those ports unless the app is running.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Tips ─────────────────────────────────────────────── -->
+    <section class="section">
+      <div class="section-eyebrow">Good to know</div>
+      <h2>Tips</h2>
+      <div class="tips-grid">
+        <div class="tip-card">
+          <div class="tip-label">Dry run</div>
+          <h3>Test payloads without a server</h3>
+          <p>Enable <strong>Dry Run</strong> on any tab to skip authentication and POST calls entirely. The full generated payload prints as formatted JSON in the log — useful for inspecting field values before a live run.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-label">Environments</div>
+          <h3>Switch targets on the fly</h3>
+          <p>Use the environment dropdown in the header to point at a different host mid-session. The selection persists in <span class="inline-code">environments.json</span> so it's still active next time you launch.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-label">Re-run</div>
+          <h3>Repeat from History</h3>
+          <p>The History tab lets you click any past run to prefill all parameters. The run never fires automatically — you still press Submit, so you can adjust anything before it goes.</p>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /page -->
+
+  <footer class="site-footer">
+    PBI Test Utility · Genesis Global · TrOWE Platform · Internal use only
+  </footer>
+
+  <script>
+    // ── Boot sequence typing animation ──────────────────────
+    (function () {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const heroTitle = document.getElementById('hero-title');
+      const cursor   = document.getElementById('cursor');
+
+      if (reduced) {
+        heroTitle.classList.add('visible');
+        cursor.classList.add('hidden');
+        return;
+      }
+
+      const lines = [
+        { id: 't0', text: 'pbi-test-utility · genesis-global / trowe' },
+        { id: 't1', text: 'loading engines: bonds · loans · interest-capture' },
+        { id: 't2', text: 'ready.' },
+      ];
+
+      const CHAR_MS = 22;
+      const LINE_PAUSE = 220;
+      const DONE_PAUSE = 600;
+
+      function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+      async function typeLine(el, text) {
+        for (let i = 0; i < text.length; i++) {
+          el.textContent += text[i];
+          if (text[i] === '.' || text[i] === ':') await sleep(CHAR_MS * 3);
+          else await sleep(CHAR_MS);
+        }
+      }
+
+      async function run() {
+        for (const { id, text } of lines) {
+          const el = document.getElementById(id);
+          await typeLine(el, text);
+          if (id === 't2') el.style.color = 'var(--emerald)';
+          await sleep(LINE_PAUSE);
+        }
+        cursor.classList.add('hidden');
+        await sleep(DONE_PAUSE);
+        heroTitle.classList.add('visible');
+      }
+
+      run();
+    })();
+
+    // ── Tab switcher ─────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
+
+</body>
+</html>
