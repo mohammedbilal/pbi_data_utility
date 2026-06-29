@@ -12,12 +12,16 @@
 | `engines/bonds_engine.py` | Done | Full adaptation of `deal_poster_url_auth_v3.py` |
 | `engines/loans_engine.py` | Done | Inlined `DataGenerator`, auth, publish, deal_query |
 | `engines/interest_engine.py` | Done | Adaptation of `capture_interest.py` |
+| `engines/csv_engine.py` | Done | CSV/Excel → JSON publisher; port of `csv_to_json_publisher_V4.py` (added 2026-06-26) |
+| `engines/tig_engine.py` | Done | `EVENT_TIG_CREATE_ORDER` publisher; session-token auth, N orders, aligned qty, auto account codes (added 2026-06-26) |
 | `engines/loan_utils/cusip.py` | Done | Copied from loan project |
 | `engines/loan_utils/dates.py` | Done | Copied from loan project |
 | `routers/_shared.py` | Done | Reusable start/stream/stop logic |
 | `routers/bonds.py` | Done | |
 | `routers/loans.py` | Done | |
 | `routers/interest.py` | Done | |
+| `routers/csv_upload.py` | Done | Multipart `/run`, SSE `/stream`, `/stop` (added 2026-06-26) |
+| `routers/tig_orders.py` | Done | Thin router (mirrors `interest.py`); registered at `/api/tig_orders` (added 2026-06-26) |
 | `routers/config_router.py` | Done | GET + PUT /api/config |
 | `routers/history_router.py` | Done | GET + POST /api/history (added 2026-06-22) |
 | `history_manager.py` | Done | JSON-persisted run history (`history.json`); add/list with retention (added 2026-06-22) |
@@ -28,16 +32,18 @@
 |---|---|---|
 | `package.json` | Done | React 18, Vite 5 |
 | `vite.config.js` | Done | Proxy `/api` → `localhost:8000` |
-| `src/index.css` | Done | Operator design system — dark, mono-forward theme (rewritten 2026-06-22) |
-| `src/App.jsx` | Done | Tab router; History tab, env-switch persistence, re-run prefill, toast (2026-06-22) |
-| `src/api.js` | Done | Thin fetch wrappers; `getHistory`/`addHistory` added (2026-06-22) |
-| `src/hooks/useRunState.js` | Done | Run/stop/SSE state hook; exposes `runId`/`status` + `onFinish` callback (2026-06-22) |
+| `src/index.css` | Done | Operator design system — dark, mono-forward theme (rewritten 2026-06-22); `.drop-zone` styles added 2026-06-26 |
+| `src/App.jsx` | Done | Tab router; CSV Upload tab added (2026-06-26); History tab, env-switch persistence, re-run prefill, toast (2026-06-22) |
+| `src/api.js` | Done | `startCsvRun` (multipart) added (2026-06-26); `getHistory`/`addHistory` added (2026-06-22) |
+| `src/hooks/useRunState.js` | Done | Optional `startFn` param added for multipart callers (2026-06-26); `runId`/`status` + `onFinish` callback (2026-06-22) |
 | `src/components/Header.jsx` | Done | Logo mark + "DATA INSERTION CONSOLE" subtitle, env dropdown + host badge (2026-06-22) |
 | `src/components/LogViewer.jsx` | Done | Terminal log treatment, auto-scroll, colour-coded levels |
 | `src/components/LiveOutput.jsx` | Done | Right-hand console card: run-id + status chip + stats strip + LogViewer (added 2026-06-22) |
-| `src/tabs/BondsTab.jsx` | Done | Force-currency on its own row above Delay, with hint (2026-06-22); dry-run toggle (2026-06-19) |
-| `src/tabs/LoansTab.jsx` | Done | Dry-run toggle + currency override; Delay / Deal-query-wait stacked vertically (2026-06-19) |
-| `src/tabs/InterestTab.jsx` | Done | Sizing rules + quantity ranges + strategy mode + dry-run toggle (2026-06-19) |
+| `src/tabs/BondsTab.jsx` | Done | localStorage persistence added (2026-06-26); force-currency + dry-run (2026-06-19/22) |
+| `src/tabs/LoansTab.jsx` | Done | localStorage persistence added (2026-06-26); dry-run + currency override (2026-06-19) |
+| `src/tabs/InterestTab.jsx` | Done | localStorage persistence added (2026-06-26); sizing + quantity ranges + strategy mode (2026-06-19) |
+| `src/tabs/CsvUploadTab.jsx` | Done | CSV/Excel upload tab: drop zone, row range, delay, simulation, time_scale, dry-run (added 2026-06-26) |
+| `src/tabs/TigOrdersTab.jsx` | Done | TIG Orders tab: issuance key, market type, registration/trade-desk free text, PM, count, qty range + sizing, dry-run (added 2026-06-26) |
 | `src/tabs/HistoryTab.jsx` | Done | Run-history table; re-run (↻) prefills the tool's params (added 2026-06-22) |
 | `src/tabs/SettingsTab.jsx` | Done | Full environment CRUD + reference dir paths; restyled, toast on save (2026-06-22) |
 
@@ -180,7 +186,7 @@ The server schema for several numeric fields was changed to a `oneOf: [string, n
 
 - Added a **Dry run** toggle to Bonds and Interest tabs (Loans already had one).
 - In all three engines, dry-run now **skips auth and POST** and **logs the full generated payload** as pretty-printed JSON to the Live Output panel. Loans dry-run previously logged only issuer/ticker; it now also dumps the payload.
-- See spec §8.1 for behaviour and the Loans `MASTER_LOAN_ID` caveat.
+- See spec §9.1 for behaviour and the Loans `MASTER_LOAN_ID` caveat.
 
 ### 5. Force-currency for Bonds
 
@@ -200,7 +206,7 @@ The launcher felt slow to reach the browser. The servers themselves are fast (ba
 - **Concurrent + fast port wait** — `Wait-ForPorts @(8000,5173)` polls both ports together at 150ms granularity, replacing two sequential `Wait-ForPort` calls that polled every 1s.
 - **Lazy WinForms** — `Add-Type System.Windows.Forms` moved into the `Show-Error` helper (only on failure) instead of at the top of every launch.
 
-Measured end-to-end from a hidden launch: both ports up at ~1.6s, browser opens at ~1.7s (verified HTTP 200 on both). See spec §11.2.
+Measured end-to-end from a hidden launch: both ports up at ~1.6s, browser opens at ~1.7s (verified HTTP 200 on both). See spec §12.2.
 
 ---
 
@@ -241,3 +247,116 @@ Previously the header dropdown only set local React state (`switchEnv` reset on 
 **Files touched:** `backend/main.py`, `backend/history_manager.py` (new), `backend/routers/history_router.py` (new); `frontend/src/index.css`, `App.jsx`, `api.js`, `hooks/useRunState.js`, `components/{Header,LogViewer,LiveOutput}.jsx`, `tabs/{BondsTab,LoansTab,InterestTab,HistoryTab,SettingsTab}.jsx`. No engine or SSE-plumbing changes. `vite build` passes; backend imports + history add/list round-trip verified.
 
 > Note: the HTTP layer for `/api/history` was not exercised via FastAPI `TestClient` because `httpx` is not in the venv; the router mirrors the working `config_router` and the storage layer underneath it is tested. For a live check, launch the app and hit `GET /api/history`.
+
+---
+
+## Changes — 2026-06-26
+
+### 1. Form value persistence (localStorage)
+
+All three existing run-parameter tabs — BondsTab, LoansTab, InterestTab — now persist their field values to `localStorage` on every change and restore them on mount. This means the form shows the last values the user entered rather than the `environments.json` defaults on every reload.
+
+**Priority chain** (lowest-to-highest wins):
+
+```
+hardcoded fallback  →  environments.json tool_defaults  →  localStorage  →  history re-run prefill
+```
+
+Each tab uses a distinct key (`pbi.bonds`, `pbi.loans`, `pbi.interest`). A `useEffect` dependent on all form state fields writes the current values; a module-level `lsRead()` helper reads them during component initialisation. No changes to routers or engines.
+
+**Files touched:** `frontend/src/tabs/{BondsTab,LoansTab,InterestTab}.jsx`. Frontend `vite build` passes.
+
+---
+
+### 2. CSV Upload tab (new feature)
+
+Integrates `pbi_csv_to_json_publisher_v2/csv_to_json_publisher_V4.py` into the utility as a new **CSV Upload** tab, positioned between Interest Capture and History.
+
+#### Backend
+
+**`backend/engines/csv_engine.py`** (new) — Ports `csv_to_json_publisher_V4.py` into the standard engine contract (`run_csv_upload(params, env, stop_event, log_queue)`):
+
+- Reads the uploaded file from `params["file_bytes"]` (a `bytes` object) into a `BytesIO` buffer. Supports `.csv`, `.xlsx`, `.xls` via pandas `read_csv` / `read_excel`.
+- **Auto-uppercases all column headers** on load. A file with `issuer_name` or `Issuer_Name` resolves to `ISSUER_NAME` in the payload.
+- Row range parsing (`"2-5"` → `[2,3,4,5]`, blank → all), duplicate-column grouping (`.1`/`.2` suffixes → first non-null wins), value normalisation (dates, scientific notation, `00-01-1900` sentinel).
+- Auth uses `env["credentials"]["bonds_loans"]` — same login flow as Bonds and Loans.
+- Posts to `https://{host_name}/gwf//event_new_issuance_data` with the same headers pattern.
+- Simulation mode: reads `INSERT_TIME` column, computes `delta / time_scale` sleep between rows; falls back to `delay_seconds` when a value is unparseable.
+- Fixed-delay mode: sleeps `delay_seconds` between each row (skips the first).
+- Dry run: logs a truncated JSON preview of each payload; skips auth and POST.
+- Emits standard `log`/`summary`/`None` sentinel sequence.
+
+**`backend/routers/csv_upload.py`** (new) — Thin FastAPI router registered at `/api/csv_upload`. The `/run` endpoint accepts `multipart/form-data` (`file: UploadFile` + `params_json: str`) rather than JSON, because the file must travel in the same request. File bytes are read async in the route handler, injected into the params dict, and handed to `start_tool_run("csv_upload", params, run_csv_upload)`. Stream / stop / status endpoints are identical to the other tools.
+
+**`backend/main.py`** — `csv_upload` router imported and registered (`prefix="/api/csv_upload"`).
+
+**`backend/requirements.txt`** — Added `pandas>=2.0.0`, `numpy>=1.26.0`, `openpyxl>=3.1.0`, `python-multipart>=0.0.9`. The latter three were installed manually into the venv for this session; `Setup.bat` will install them on fresh setups.
+
+#### Frontend
+
+**`frontend/src/api.js`** — Added `startCsvRun(file, params)`. Builds a `FormData` with `file` and `params_json` (JSON-stringified params), POSTs to `/api/csv_upload/run` without a `Content-Type` header (browser sets the correct `multipart/form-data; boundary=...` automatically).
+
+**`frontend/src/hooks/useRunState.js`** — Added an optional third parameter `startFn`. When provided, `start()` calls `startFn(params)` instead of the default `startRun(tool, params)`. Backward-compatible: all existing callers pass nothing and get the old behaviour. The CSV Upload tab passes a `useCallback`-wrapped function that closes over the selected `File` object and calls `startCsvRun`.
+
+**`frontend/src/tabs/CsvUploadTab.jsx`** (new):
+
+- **Drop zone** — a dashed-border `.drop-zone` panel. Accepts drag-and-drop or click-to-browse for `.csv`, `.xlsx`, `.xls` files. Shows the file name + a ✕ clear button once a file is selected. An absolutely-positioned hidden `<input type="file">` is overlaid so native file-dialog behaviour is preserved while the whole panel is clickable.
+- **Form fields:** row range (text, optional), delay seconds (number), simulation toggle (with time-scale field shown conditionally), dry-run toggle.
+- **localStorage** persistence for all non-file fields under key `pbi.csv_upload`.
+- `useRunState('csv_upload', recordRun, startFn)` — tool name `'csv_upload'` routes SSE/stop calls to `/api/csv_upload/stream/:id` and `/api/csv_upload/stop/:id`.
+- **Run button** disabled until a file is selected.
+- **History recording:** `params_raw` stores `{file_name, rows, delay_seconds, simulation, time_scale, dry_run}` — no file bytes. History re-run prefills these params but requires the user to re-select the file.
+
+**`frontend/src/App.jsx`** — `CsvUploadTab` imported; `csv_upload` added to the `TABS` array between `interest` and `history`; rendered in the view switch with `prefill` / `onPrefillConsumed` wired the same as other tool tabs.
+
+**`frontend/src/index.css`** — `.drop-zone`, `.drop-zone.drag-over`, `.drop-zone-icon`, `.drop-zone-label`, `.drop-zone-file` styles added before the scrollbar block.
+
+**Files touched:** `backend/main.py`, `backend/requirements.txt`, `backend/engines/csv_engine.py` (new), `backend/routers/csv_upload.py` (new); `frontend/src/api.js`, `frontend/src/hooks/useRunState.js`, `frontend/src/index.css`, `frontend/src/App.jsx`, `frontend/src/tabs/CsvUploadTab.jsx` (new). `vite build` passes; backend imports verified (`python -c "from engines.csv_engine import run_csv_upload; from routers.csv_upload import router"`).
+
+#### Caveats
+
+- `insert_time_column` is fixed to `"INSERT_TIME"` in the engine (not user-configurable from the UI). If a file uses a different column name for timestamps, simulation mode will fall back to `delay_seconds` for every row.
+- `max_sleep_seconds` defaults to `None` (no cap). Not exposed in the UI.
+- `message_type` and `service_name` are fixed to `EVENT_NEW_ISSUANCE_DATA` / `ISSUANCE_EVENT_HANDLER`. Not exposed in the UI.
+
+---
+
+### 3. TIG Orders tab (new feature)
+
+Adds a fifth tool tab — **TIG Orders** — that posts `EVENT_TIG_CREATE_ORDER` events for a different client. It sits between Interest Capture and CSV Upload. Decision: kept as a **separate tab** rather than a toggle inside Interest Capture, since the two events serve different purposes (rate capture vs. order placement) and have structurally different payloads. See spec §16.
+
+**Requirements (confirmed with the user before building):**
+
+- **Auth:** session-token only (like Bonds/Loans), using a **new dedicated `tig_orders` credential set**. A double check was made vs. Interest's session+refresh model — TIG uses session only.
+- **Run loop:** user sets a `count`; each order gets an **independent random quantity**, increment-aligned (min-piece / increment, same approach as Interest).
+- **`ACCOUNT_CODE`:** auto-generated per order — 6-char uppercase alphanumeric, **guaranteed ≥1 letter and ≥1 digit**. (The sample payload's `"Test 16"` was illustrative only and contradicts the stated 6-char rule, so the rule won.)
+- **Fields exposed:** `ISSUANCE_KEY` (manual), `REGISTRATION_TYPE` (free text), `TRADE_DESK` (free text), `PORTFOLIO_MANAGER` (optional, defaults to `John Doe`, editable), `MARKET_TYPE` (dropdown, default `Market`; `Limit` is a stub for later limit-type/spread fields).
+- **Constant fields** (hardcoded, not in UI): `ORDER_STATUS_FIELD` = `""`, `SECURITY_ID` = `null`, `REGULATION_SUBCATEGORY` = `null`.
+
+#### Backend
+
+**`backend/engines/tig_engine.py`** (new) — `run_tig_orders(params, env, stop_event, log_queue)` following the standard engine contract. Session-token auth via `credentials.tig_orders`; posts to `https://{host}/gwf/EVENT_TIG_CREATE_ORDER` (note the **single** `/gwf/`). Helpers: `_gen_account_code()` (6-char, letter+digit guaranteed) and `_aligned_quantity()` (increment-snapped random in range). Detects `MESSAGE_TYPE` NACK and HTTP errors; supports dry-run (skip auth+POST, dump payload JSON). `_interruptible_sleep` honours `stop_event` inside the inter-order delay.
+
+**`backend/routers/tig_orders.py`** (new) — thin router mirroring `interest.py`. Registered in `main.py` at `prefix="/api/tig_orders"` — so the frontend's generic `startRun`/SSE/stop calls (keyed on tool name `tig_orders`) route correctly with no `api.js` changes.
+
+**`backend/environments.json`** — added `credentials.tig_orders` (`username`/`password`, blank by default) to every environment, and a `tool_defaults.tig_orders` block (issuance_key, market_type, registration_type=`144a`, trade_desk=`GLOBALFI`, portfolio_manager=`John Doe`, count=5, delay_seconds=1, quantity_ranges 100k–1M, sizing 50k/50k).
+
+#### Frontend
+
+**`frontend/src/tabs/TigOrdersTab.jsx`** (new) — mirrors `InterestTab` (localStorage key `pbi.tig_orders`, prefill chain, `useRunState('tig_orders', recordRun)`, history recording). Fields per spec §16.3; a hint line explains the auto account-code + aligned-quantity behaviour.
+
+**`frontend/src/App.jsx`** — imported `TigOrdersTab`; added `{ id: 'tig_orders', label: 'TIG Orders' }` to `TABS` between `interest` and `csv_upload`; rendered with the usual `prefill` / `onPrefillConsumed` wiring.
+
+**`frontend/src/tabs/SettingsTab.jsx`** — added a **"Create TIG Orders credentials"** section (username/password) and the `tig_orders` default in `addEnvironment`.
+
+**`frontend/src/tabs/HistoryTab.jsx`** — added `tig_orders` (and `csv_upload`) to `TOOL_LABEL`.
+
+**Files touched:** `backend/main.py`, `backend/environments.json`, `backend/engines/tig_engine.py` (new), `backend/routers/tig_orders.py` (new); `frontend/src/App.jsx`, `frontend/src/tabs/{TigOrdersTab (new),SettingsTab,HistoryTab}.jsx`.
+
+**Validation:** backend imports + `environments.json` parse verified; engine unit-checked (2000 account codes match `[A-Z0-9]{6}` with letter+digit guaranteed; 2000 quantities all 50k-aligned within 100k–1M) and dry-run emits a payload field-identical to the client's sample. `vite build` passes.
+
+#### Caveats
+
+- **`MARKET_TYPE = "Limit"`** currently just sets the field to `"Limit"`; the additional Limit inputs (limit type, spread, etc.) are a deliberate stub to be added later.
+- **TIG NACK shape is assumed** to mirror the other tools (`MESSAGE_TYPE` containing `NACK`, reason at `DETAILS.TEXT`/`DETAILS.ERROR`). Not yet validated end-to-end against a live server — the engine has only been exercised in dry-run. First live run should confirm the success/NACK branches log correctly.
+- **POST headers** mirror the Bonds pattern (`SESSION_AUTH_TOKEN` + standard headers). If the TIG endpoint needs different/extra headers, adjust `headers` in `tig_engine._run`.

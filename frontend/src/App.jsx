@@ -5,14 +5,18 @@ import LoansTab from './tabs/LoansTab.jsx'
 import InterestTab from './tabs/InterestTab.jsx'
 import HistoryTab from './tabs/HistoryTab.jsx'
 import SettingsTab from './tabs/SettingsTab.jsx'
+import CsvUploadTab from './tabs/CsvUploadTab.jsx'
+import TigOrdersTab from './tabs/TigOrdersTab.jsx'
 import { getConfig, saveConfig } from './api.js'
 
 const TABS = [
-  { id: 'bonds',    label: 'Bonds' },
-  { id: 'loans',    label: 'Loans' },
-  { id: 'interest', label: 'Interest Capture' },
-  { id: 'history',  label: 'History' },
-  { id: 'settings', label: 'Settings' },
+  { id: 'bonds',      label: 'Bonds' },
+  { id: 'loans',      label: 'Loans' },
+  { id: 'interest',   label: 'Interest Capture' },
+  { id: 'tig_orders', label: 'TIG Orders' },
+  { id: 'csv_upload', label: 'CSV Upload' },
+  { id: 'history',    label: 'History' },
+  { id: 'settings',   label: 'Settings' },
 ]
 
 export default function App() {
@@ -93,6 +97,12 @@ export default function App() {
         )}
         {activeTab === 'interest' && (
           <InterestTab {...tabProps} prefill={prefillFor('interest')} onPrefillConsumed={consumePrefill} />
+        )}
+        {activeTab === 'tig_orders' && (
+          <TigOrdersTab {...tabProps} prefill={prefillFor('tig_orders')} onPrefillConsumed={consumePrefill} />
+        )}
+        {activeTab === 'csv_upload' && (
+          <CsvUploadTab {...tabProps} prefill={prefillFor('csv_upload')} onPrefillConsumed={consumePrefill} />
         )}
         {activeTab === 'history' && (
           <HistoryTab onRerun={rerunFromHistory} />

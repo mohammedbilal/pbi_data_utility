@@ -36,6 +36,13 @@ export function createEventSource(tool, runId) {
   return new EventSource(`${BASE}/${tool}/stream/${runId}`)
 }
 
+export async function startCsvRun(file, params) {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('params_json', JSON.stringify(params))
+  return _json(await fetch(`${BASE}/csv_upload/run`, { method: 'POST', body: fd }))
+}
+
 export async function getHistory() {
   return _json(await fetch(`${BASE}/history`))
 }

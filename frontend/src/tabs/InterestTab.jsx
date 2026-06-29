@@ -3,6 +3,9 @@ import LiveOutput from '../components/LiveOutput.jsx'
 import { useRunState } from '../hooks/useRunState.js'
 import { addHistory } from '../api.js'
 
+const LS_KEY = 'pbi.interest'
+function lsRead() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {} } catch { return {} } }
+
 export default function InterestTab({ config, activeEnvName, prefill, onPrefillConsumed }) {
   const d = config?.tool_defaults?.interest || {}
   const qr = d.quantity_ranges || {}
@@ -10,24 +13,39 @@ export default function InterestTab({ config, activeEnvName, prefill, onPrefillC
   const pf = prefill || {}
   const pfqr = pf.quantity_ranges || {}
   const pfsz = pf.sizing || {}
+  const ls = lsRead()
+  const lsqr = ls.quantity_ranges || {}
+  const lssz = ls.sizing || {}
 
-  const [trancheName, setTrancheName]   = useState(pf.tranche_name ?? d.tranche_name ?? '')
-  const [trueCount, setTrueCount]       = useState(pf.is_modelled_true ?? d.is_modelled_true ?? 9)
-  const [falseCount, setFalseCount]     = useState(pf.is_modelled_false ?? d.is_modelled_false ?? 5)
-  const [closeness, setCloseness]       = useState(pf.pair_closeness_pct ?? d.pair_closeness_pct ?? 2)
-  const [mismatch, setMismatch]         = useState(pf.total_mismatch_pct ?? d.total_mismatch_pct ?? 0)
-  const [delaySeconds, setDelaySeconds] = useState(pf.delay_seconds ?? d.delay_seconds ?? 4)
-  const [strategy, setStrategy]         = useState(pf.strategy ?? d.strategy ?? false)
-  const [entity, setEntity]             = useState(pf.event_defaults?.ENTITY ?? d.event_defaults?.ENTITY ?? 'TRPA')
-  const [minPiece, setMinPiece]         = useState(pfsz.min_piece ?? sz.min_piece ?? 10000)
-  const [increment, setIncrement]       = useState(pfsz.increment_size ?? sz.increment_size ?? 100000)
-  const [trueMin, setTrueMin]           = useState(pfqr.true_min ?? qr.true_min ?? 100000)
-  const [trueMax, setTrueMax]           = useState(pfqr.true_max ?? qr.true_max ?? 1200000)
-  const [falseMin, setFalseMin]         = useState(pfqr.false_min ?? qr.false_min ?? 600000)
-  const [falseMax, setFalseMax]         = useState(pfqr.false_max ?? qr.false_max ?? 1600000)
-  const [dryRun, setDryRun]             = useState(pf.dry_run ?? false)
+  const [trancheName, setTrancheName]   = useState(pf.tranche_name ?? ls.tranche_name ?? d.tranche_name ?? '')
+  const [trueCount, setTrueCount]       = useState(pf.is_modelled_true ?? ls.is_modelled_true ?? d.is_modelled_true ?? 9)
+  const [falseCount, setFalseCount]     = useState(pf.is_modelled_false ?? ls.is_modelled_false ?? d.is_modelled_false ?? 5)
+  const [closeness, setCloseness]       = useState(pf.pair_closeness_pct ?? ls.pair_closeness_pct ?? d.pair_closeness_pct ?? 2)
+  const [mismatch, setMismatch]         = useState(pf.total_mismatch_pct ?? ls.total_mismatch_pct ?? d.total_mismatch_pct ?? 0)
+  const [delaySeconds, setDelaySeconds] = useState(pf.delay_seconds ?? ls.delay_seconds ?? d.delay_seconds ?? 4)
+  const [strategy, setStrategy]         = useState(pf.strategy ?? ls.strategy ?? d.strategy ?? false)
+  const [entity, setEntity]             = useState(pf.event_defaults?.ENTITY ?? ls.entity ?? d.event_defaults?.ENTITY ?? 'TRPA')
+  const [minPiece, setMinPiece]         = useState(pfsz.min_piece ?? lssz.min_piece ?? sz.min_piece ?? 10000)
+  const [increment, setIncrement]       = useState(pfsz.increment_size ?? lssz.increment_size ?? sz.increment_size ?? 100000)
+  const [trueMin, setTrueMin]           = useState(pfqr.true_min ?? lsqr.true_min ?? qr.true_min ?? 100000)
+  const [trueMax, setTrueMax]           = useState(pfqr.true_max ?? lsqr.true_max ?? qr.true_max ?? 1200000)
+  const [falseMin, setFalseMin]         = useState(pfqr.false_min ?? lsqr.false_min ?? qr.false_min ?? 600000)
+  const [falseMax, setFalseMax]         = useState(pfqr.false_max ?? lsqr.false_max ?? qr.false_max ?? 1600000)
+  const [dryRun, setDryRun]             = useState(pf.dry_run ?? ls.dry_run ?? false)
 
   useEffect(() => { if (prefill) onPrefillConsumed?.() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        tranche_name: trancheName, is_modelled_true: trueCount, is_modelled_false: falseCount,
+        pair_closeness_pct: closeness, total_mismatch_pct: mismatch, delay_seconds: delaySeconds,
+        strategy, entity, dry_run: dryRun,
+        sizing: { min_piece: minPiece, increment_size: increment },
+        quantity_ranges: { true_min: trueMin, true_max: trueMax, false_min: falseMin, false_max: falseMax },
+      }))
+    } catch {}
+  }, [trancheName, trueCount, falseCount, closeness, mismatch, delaySeconds, strategy, entity, minPiece, increment, trueMin, trueMax, falseMin, falseMax, dryRun])
 
   const paramsRef = useRef(null)
   const envRef = useRef(activeEnvName)

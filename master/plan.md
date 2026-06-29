@@ -16,7 +16,7 @@
 │  Browser (React / Vite)                                     │
 │                                                             │
 │  Header [logo · env dropdown · host badge]                  │
-│  Tabs: Bonds | Loans | Interest | History | Settings        │
+│  Tabs: Bonds | Loans | Interest | CSV Upload | History | Settings │
 │                                                             │
 │  Run tabs:                                                  │
 │    Left — parameter form + Run/Stop buttons                 │
@@ -29,16 +29,18 @@
 │  FastAPI backend  (:8000)                                   │
 │                                                             │
 │  /api/config           GET / PUT  environments.json         │
-│  /api/bonds/run        POST → starts bonds engine thread    │
-│  /api/bonds/stream/:id GET  → SSE log stream                │
-│  /api/bonds/stop/:id   POST → signals stop event            │
-│  (same pattern for /api/loans and /api/interest)            │
-│  /api/history          GET / POST  history.json             │
+│  /api/bonds/run           POST → starts bonds engine thread  │
+│  /api/bonds/stream/:id    GET  → SSE log stream              │
+│  /api/bonds/stop/:id      POST → signals stop event          │
+│  (same pattern for /api/loans, /api/interest, /api/csv_upload)│
+│  /api/csv_upload/run      POST (multipart) → file + params   │
+│  /api/history             GET / POST  history.json           │
 │                                                             │
 │  engines/                                                   │
 │    bonds_engine.py    (adapted deal_poster_url_auth_v3.py)  │
 │    loans_engine.py    (adapted loan multi-module project)   │
 │    interest_engine.py (adapted capture_interest.py)         │
+│    csv_engine.py      (adapted csv_to_json_publisher_V4.py) │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,17 +87,18 @@ It puts `None` as a sentinel when done.
 
 1. `package.json` + `vite.config.js` — Vite + React, proxy `/api` → `localhost:8000`
 2. `index.css` — Operator design system (dark, mono-forward), colour-coded log levels, toggle switches
-3. `src/api.js` — thin fetch wrappers: `getConfig`, `saveConfig`, `startRun`, `stopRun`, `createEventSource`, `getHistory`, `addHistory`
-4. `src/hooks/useRunState.js` — shared hook: manages `running`, `logs`, `summary`, `error`, `runId`, `status`; opens/closes EventSource; fires `onFinish` to record history
+3. `src/api.js` — thin fetch wrappers: `getConfig`, `saveConfig`, `startRun`, `startCsvRun` (multipart), `stopRun`, `createEventSource`, `getHistory`, `addHistory`
+4. `src/hooks/useRunState.js` — shared hook: manages `running`, `logs`, `summary`, `error`, `runId`, `status`; opens/closes EventSource; fires `onFinish` to record history; accepts optional `startFn` override for non-JSON start calls
 5. `src/components/Header.jsx` — logo mark + subtitle + environment dropdown + host badge
 6. `src/components/LogViewer.jsx` — monospace terminal panel, auto-scrolls to bottom
 7. `src/components/LiveOutput.jsx` — right-hand console card: run-id + status chip + summary stats + LogViewer
 8. `src/tabs/BondsTab.jsx` — bonds parameter form (force-currency override + dry-run toggle)
 9. `src/tabs/LoansTab.jsx` — loans parameter form (dry-run toggle, currency override; Delay / Deal-query-wait stacked vertically)
 10. `src/tabs/InterestTab.jsx` — interest capture form (sizing rules, quantity ranges, strategy mode, dry-run toggle)
-11. `src/tabs/HistoryTab.jsx` — run-history table; re-run (↻) prefills the tool's params
-12. `src/tabs/SettingsTab.jsx` — environment CRUD, credentials, reference data paths
-13. `src/App.jsx` — tab router, loads config on mount, persists env switch, wires re-run prefill + toast
+11. `src/tabs/CsvUploadTab.jsx` — CSV/Excel upload tab: drop zone, row range, delay, simulation/time-scale, dry-run; multipart POST
+12. `src/tabs/HistoryTab.jsx` — run-history table; re-run (↻) prefills the tool's params
+13. `src/tabs/SettingsTab.jsx` — environment CRUD, credentials, reference data paths
+14. `src/App.jsx` — tab router, loads config on mount, persists env switch, wires re-run prefill + toast
 
 ### Phase 4 — Startup scripts
 
@@ -103,7 +106,7 @@ The original `start_backend.bat` / `start_frontend.bat` pair was replaced by a n
 
 - `Setup.bat` — one-time: creates `backend\.venv`, installs `requirements.txt`, runs `npm install`
 - `Launch.vbs` — double-click entry point; runs `Start-App.ps1` hidden (no console)
-- `Start-App.ps1` — starts uvicorn + Vite hidden, waits for both ports, opens the browser (see spec §11.1 for PATH/npm/IPv6 robustness guards)
+- `Start-App.ps1` — starts uvicorn + Vite hidden, waits for both ports, opens the browser (see spec §12.1 for PATH/npm/IPv6 robustness guards)
 - `Stop-App.vbs` — double-click to stop both servers
 
 ---
@@ -141,6 +144,10 @@ The bonds and loans reference CSV files remain in their original directories. Th
 ### Run history persisted server-side (added 2026-06-22)
 
 The redesign added a History tab. History could live in browser `localStorage` (fastest, zero backend) or in a backend store (shared, durable). We chose a **backend JSON store** (`history.json` via `history_manager.py` + `/api/history`) so the QA team shares one history and records survive browser/cache resets. Records are still *written* from the frontend on run completion (the engine layer doesn't know the env name or a params summary); the backend only persists and prunes them. See spec §12.
+
+### Form state persisted to localStorage (added 2026-06-26)
+
+All four run-parameter tabs (Bonds, Loans, Interest, CSV Upload) save their field values to `localStorage` on every change and read them back on mount, between the history-prefill priority and the `environments.json` defaults priority. File selections on CSV Upload are not persisted (a `File` object is not serialisable).
 
 ### Re-run prefills, never auto-fires (added 2026-06-22)
 
@@ -202,6 +209,7 @@ C:\python\PBI_Test_Utility\
 │   │   ├── bonds_engine.py
 │   │   ├── loans_engine.py
 │   │   ├── interest_engine.py
+│   │   ├── csv_engine.py          ← CSV/Excel → JSON publisher (added 2026-06-26)
 │   │   └── loan_utils\
 │   │       ├── cusip.py
 │   │       └── dates.py
@@ -210,8 +218,9 @@ C:\python\PBI_Test_Utility\
 │       ├── bonds.py
 │       ├── loans.py
 │       ├── interest.py
+│       ├── csv_upload.py          ← multipart upload endpoint (added 2026-06-26)
 │       ├── config_router.py
-│       └── history_router.py   ← GET / POST /api/history
+│       └── history_router.py      ← GET / POST /api/history
 ├── frontend\
 │   ├── index.html
 │   ├── package.json
@@ -231,6 +240,7 @@ C:\python\PBI_Test_Utility\
 │           ├── BondsTab.jsx
 │           ├── LoansTab.jsx
 │           ├── InterestTab.jsx
+│           ├── CsvUploadTab.jsx   ← CSV Upload tab (added 2026-06-26)
 │           ├── HistoryTab.jsx
 │           └── SettingsTab.jsx
 └── (root launch scripts listed at top)

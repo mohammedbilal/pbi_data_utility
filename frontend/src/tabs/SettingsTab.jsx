@@ -42,6 +42,7 @@ export default function SettingsTab({ config, refreshConfig, onToast }) {
         credentials: {
           bonds_loans: { username: '', password: '' },
           interest:    { username: '', password: '' },
+          tig_orders:  { username: '', password: '' },
         },
       },
     }))
@@ -152,6 +153,24 @@ export default function SettingsTab({ config, refreshConfig, onToast }) {
                   <input type="password"
                     value={env.credentials?.interest?.password || ''}
                     onChange={e => updateEnvField('credentials.interest.password', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <p className="section-title">Create TIG Orders credentials</p>
+            <div className="cred-group">
+              <div className="field-row">
+                <div className="field">
+                  <label>Username</label>
+                  <input type="text"
+                    value={env.credentials?.tig_orders?.username || ''}
+                    onChange={e => updateEnvField('credentials.tig_orders.username', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Password</label>
+                  <input type="password"
+                    value={env.credentials?.tig_orders?.password || ''}
+                    onChange={e => updateEnvField('credentials.tig_orders.password', e.target.value)} />
                 </div>
               </div>
             </div>

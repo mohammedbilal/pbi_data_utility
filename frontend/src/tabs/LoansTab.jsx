@@ -3,25 +3,34 @@ import LiveOutput from '../components/LiveOutput.jsx'
 import { useRunState } from '../hooks/useRunState.js'
 import { addHistory } from '../api.js'
 
+const LS_KEY = 'pbi.loans'
+function lsRead() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {} } catch { return {} } }
+
 export default function LoansTab({ config, activeEnvName, prefill, onPrefillConsumed }) {
   const defaults = config?.tool_defaults?.loans || {}
   const refDirs = config?.reference_dirs || {}
   const pf = prefill || {}
+  const ls = lsRead()
 
   const initTranches = (src, fallback) =>
     Array.isArray(src) ? src.join(', ') : String(src ?? fallback)
 
-  const [single, setSingle] = useState(pf.single ?? defaults.single ?? 3)
-  const [multi, setMulti] = useState(pf.multi ?? defaults.multi ?? 0)
+  const [single, setSingle] = useState(pf.single ?? ls.single ?? defaults.single ?? 3)
+  const [multi, setMulti] = useState(pf.multi ?? ls.multi ?? defaults.multi ?? 0)
   const [tranches, setTranches] = useState(
-    prefill ? initTranches(pf.tranches_per_multi, '2, 3') : initTranches(defaults.tranches_per_multi, '2, 3')
+    pf.tranches_per_multi != null ? initTranches(pf.tranches_per_multi, '2, 3') :
+    ls.tranches != null ? ls.tranches : initTranches(defaults.tranches_per_multi, '2, 3')
   )
-  const [delay, setDelay] = useState(pf.delay ?? defaults.delay ?? 15)
-  const [dealQueryWait, setDealQueryWait] = useState(pf.deal_query_wait ?? defaults.deal_query_wait ?? 6)
-  const [currency, setCurrency] = useState(pf.currency ?? '')
-  const [dryRun, setDryRun] = useState(pf.dry_run ?? false)
+  const [delay, setDelay] = useState(pf.delay ?? ls.delay ?? defaults.delay ?? 15)
+  const [dealQueryWait, setDealQueryWait] = useState(pf.deal_query_wait ?? ls.deal_query_wait ?? defaults.deal_query_wait ?? 6)
+  const [currency, setCurrency] = useState(pf.currency ?? ls.currency ?? '')
+  const [dryRun, setDryRun] = useState(pf.dry_run ?? ls.dry_run ?? false)
 
   useEffect(() => { if (prefill) onPrefillConsumed?.() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ single, multi, tranches, delay, deal_query_wait: dealQueryWait, currency, dry_run: dryRun })) } catch {}
+  }, [single, multi, tranches, delay, dealQueryWait, currency, dryRun])
 
   const paramsRef = useRef(null)
   const envRef = useRef(activeEnvName)

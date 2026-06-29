@@ -1,5 +1,5 @@
 {
-  "active": "QA2",
+  "active": "HSBC - QA1",
   "environments": {
     "QA1": {
       "host_name": "qa-trowe-pbi1.cddev.genesis.global",
@@ -12,6 +12,10 @@
         "interest": {
           "username": "TRPUser",
           "password": "Password11*"
+        },
+        "tig_orders": {
+          "username": "",
+          "password": ""
         }
       }
     },
@@ -25,6 +29,28 @@
         },
         "interest": {
           "username": "TRPUser",
+          "password": "Password11*"
+        },
+        "tig_orders": {
+          "username": "",
+          "password": ""
+        }
+      }
+    },
+    "HSBC - QA1": {
+      "host_name": "qa-hsbc-pbi1.cddev.genesis.global",
+      "verify_ssl": true,
+      "credentials": {
+        "bonds_loans": {
+          "username": "Rahul",
+          "password": "Password11*"
+        },
+        "interest": {
+          "username": "",
+          "password": ""
+        },
+        "tig_orders": {
+          "username": "Rahul",
           "password": "Password11*"
         }
       }
@@ -81,6 +107,24 @@
         "COMMENT": "V15 Or vs St",
         "REGISTRATION_TYPE": null,
         "REGULATION_SUBCATEGORY": null
+      }
+    },
+    "tig_orders": {
+      "tranche_id": "",
+      "region_entity": "AMFR",
+      "market_type": "Market",
+      "registration_type": "144a",
+      "trade_desk": "GLOBALFI",
+      "portfolio_manager": "John Doe",
+      "count": 5,
+      "delay_seconds": 1,
+      "quantity_ranges": {
+        "min": 100000,
+        "max": 1000000
+      },
+      "sizing": {
+        "min_piece": 50000,
+        "increment": 50000
       }
     }
   }

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { createEventSource, startRun, stopRun } from '../api.js'
 
-export function useRunState(tool, onFinish) {
+export function useRunState(tool, onFinish, startFn) {
   const [running, setRunning] = useState(false)
   const [logs, setLogs] = useState([])
   const [summary, setSummary] = useState(null)
@@ -56,7 +56,7 @@ export function useRunState(tool, onFinish) {
 
     let data
     try {
-      data = await startRun(tool, params)
+      data = await (startFn ? startFn(params) : startRun(tool, params))
     } catch (err) {
       setError(err.message)
       finishedRef.current = true

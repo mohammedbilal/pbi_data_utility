@@ -3,24 +3,33 @@ import LiveOutput from '../components/LiveOutput.jsx'
 import { useRunState } from '../hooks/useRunState.js'
 import { addHistory } from '../api.js'
 
+const LS_KEY = 'pbi.bonds'
+function lsRead() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {} } catch { return {} } }
+
 export default function BondsTab({ config, activeEnvName, prefill, onPrefillConsumed }) {
   const defaults = config?.tool_defaults?.bonds || {}
   const refDirs = config?.reference_dirs || {}
   const pf = prefill || {}
+  const ls = lsRead()
 
   const initTranches = (src, fallback) =>
     Array.isArray(src) ? src.join(', ') : String(src ?? fallback)
 
-  const [single, setSingle] = useState(pf.single ?? defaults.single ?? 0)
-  const [multi, setMulti] = useState(pf.multi ?? defaults.multi ?? 1)
+  const [single, setSingle] = useState(pf.single ?? ls.single ?? defaults.single ?? 0)
+  const [multi, setMulti] = useState(pf.multi ?? ls.multi ?? defaults.multi ?? 1)
   const [tranches, setTranches] = useState(
-    prefill ? initTranches(pf.tranches_per_multi, '3') : initTranches(defaults.tranches_per_multi, '3')
+    pf.tranches_per_multi != null ? initTranches(pf.tranches_per_multi, '3') :
+    ls.tranches != null ? ls.tranches : initTranches(defaults.tranches_per_multi, '3')
   )
-  const [sleepMs, setSleepMs] = useState(pf.sleep_ms ?? defaults.sleep_ms ?? 100)
-  const [currency, setCurrency] = useState(pf.currency ?? '')
-  const [dryRun, setDryRun] = useState(pf.dry_run ?? false)
+  const [sleepMs, setSleepMs] = useState(pf.sleep_ms ?? ls.sleep_ms ?? defaults.sleep_ms ?? 100)
+  const [currency, setCurrency] = useState(pf.currency ?? ls.currency ?? '')
+  const [dryRun, setDryRun] = useState(pf.dry_run ?? ls.dry_run ?? false)
 
   useEffect(() => { if (prefill) onPrefillConsumed?.() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ single, multi, tranches, sleep_ms: sleepMs, currency, dry_run: dryRun })) } catch {}
+  }, [single, multi, tranches, sleepMs, currency, dryRun])
 
   const paramsRef = useRef(null)
   const envRef = useRef(activeEnvName)
