@@ -1,0 +1,32 @@
+CODE,SECTOR,WEIGHT
+501,Education,31
+AIR,Transportation,91
+BLD,Public Buildings,74
+BRI,Transportation,17
+CIG,General Purposes,23
+COO,General Purposes,25
+COP,General Purposes,22
+EDU,Education,44
+EIR,Economic Development,2
+GAS,Power,2
+GEN,General Purposes,263
+GGP,General Purposes,50
+HIG,Education,30
+HLT,Health Care,65
+HSG,Housing,341
+HWY,Transportation,27
+IDR,Industrial Development,7
+LTG,General Purposes,5
+MFH,Housing,91
+MIS,Miscellaneous,31
+PIT,General Purposes,33
+POR,Transportation,40
+PWR,Power,113
+REF,General Purposes,49
+SCH,Education,161
+SFH,Housing,10
+SLT,General Purposes,25
+SOL,Industrial Development,44
+STL,Education,17
+SWR,Water & Sewer,89
+TRA,Transportation,101

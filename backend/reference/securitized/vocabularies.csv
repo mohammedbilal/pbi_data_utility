@@ -1,0 +1,127 @@
+FIELD,VALUE,WEIGHT
+ASSET_TYPE,Auto Loan ABS,10
+ASSET_TYPE,Auto Lease ABS,7
+ASSET_TYPE,Credit Card ABS,10
+ASSET_TYPE,Federal Student Loan (FFELP) ABS,5
+ASSET_TYPE,Private Student Loan ABS,5
+ASSET_TYPE,Unsecured Consumer Loan ABS,8
+ASSET_TYPE,Point-of-Sale Financing ABS,4
+ASSET_TYPE,Marketplace Loan ABS,5
+ASSET_TYPE,Buy Now Pay Later (BNPL) ABS,4
+ASSET_TYPE,Home Equity Line of Credit (HELOC) ABS,4
+ASSET_TYPE,Manufactured Housing ABS,2
+ASSET_TYPE,Single-Family Rental (SFR) ABS,3
+ASSET_TYPE,Recreational Vehicle (RV) ABS,2
+ASSET_TYPE,Marine (Boat) ABS,2
+ASSET_TYPE,Powersports ABS,2
+ASSET_TYPE,Motorcycle ABS,2
+ASSET_TYPE,Device Payment Plan ABS,3
+ASSET_TYPE,Equipment Lease ABS,8
+ASSET_TYPE,Fleet Lease ABS,3
+ASSET_TYPE,Dealer Floorplan ABS,5
+ASSET_TYPE,Small Business Loan ABS,4
+ASSET_TYPE,Franchise Loan ABS,2
+ASSET_TYPE,Trade Receivables ABS,4
+ASSET_TYPE,Insurance Premium Finance ABS,2
+ASSET_TYPE,Servicer Advance ABS,2
+ASSET_TYPE,Mortgage Servicing Rights (MSR) ABS,2
+ASSET_TYPE,Aircraft Lease ABS,5
+ASSET_TYPE,Shipping Container ABS,3
+ASSET_TYPE,Railcar Lease ABS,3
+ASSET_TYPE,Solar Loan ABS,4
+ASSET_TYPE,Solar Power Purchase Agreement (PPA) ABS,3
+ASSET_TYPE,Property Assessed Clean Energy (PACE) ABS,2
+ASSET_TYPE,Timeshare ABS,3
+ASSET_TYPE,Music Royalty ABS,2
+ASSET_TYPE,Film and Media Royalty ABS,1
+ASSET_TYPE,Pharmaceutical Royalty ABS,2
+ASSET_TYPE,Whole Business Securitization (WBS),3
+ASSET_TYPE,Cell Tower ABS,3
+ASSET_TYPE,Data Center ABS,4
+ASSET_TYPE,Fiber Network ABS,3
+ASSET_TYPE,Toll Road ABS,2
+ASSET_TYPE,Infrastructure Revenue ABS,2
+ASSET_TYPE,Tobacco Settlement ABS,1
+ASSET_TYPE,Structured Settlement ABS,2
+ASSET_TYPE,Litigation Finance ABS,1
+ASSET_TYPE,Life Settlement ABS,1
+ASSET_TYPE,Utility Tariff (Rate Reduction) ABS,2
+ASSET_TYPE,Recurring Revenue (SaaS) ABS,1
+ASSET_TYPE,Collateralized Fund Obligation (CFO),2
+ASSET_TYPE,Residential Mortgage-Backed Securities (RMBS),9
+ASSET_TYPE,Commercial Mortgage-Backed Securities (CMBS),9
+ASSET_TYPE,Collateralized Debt Obligation (CDO),3
+ASSET_TYPE,Collateralized Loan Obligation (CLO),8
+ASSET_TYPE,Collateralized Bond Obligation (CBO),2
+ASSET_TYPE,Non-Performing Loan (NPL) Securitization,3
+ASSET_TYPE,Re-Performing Loan (RPL) Securitization,3
+ACCRUAL_METHOD,Simple interest accrual,4
+ACCRUAL_METHOD,Scheduled balance accrual,4
+ACCRUAL_METHOD,Actual balance accrual,6
+ACCRUAL_METHOD,Daily accrual,2
+ACCRUAL_METHOD,Monthly accrual,5
+ACCRUAL_METHOD,Discount accretion,1
+ACCRUAL_METHOD,Premium amortization,1
+ACCRUAL_METHOD,Deferred interest accrual,1
+ACCRUAL_METHOD,PIK / capitalized interest,0
+ACCRUAL_METHOD,Accrual bond / Z-tranche method,0
+ACCRUAL_METHOD,Interest shortfall carryforward,1
+ACCRUAL_METHOD,Excess spread accrual / release,1
+RANKING,1st Lien,3
+RANKING,2nd Lien,2
+RANKING,3rd Lien,1
+RANKING,Additional Tier 1,0
+RANKING,Additional Tier 2,0
+RANKING,Asset Backed,4
+RANKING,Corporate Hybrid,0
+RANKING,Covered Pfanbriefe,0
+RANKING,ESOP,0
+RANKING,FRCS,0
+RANKING,Insurance RT1,0
+RANKING,Insurance T2/T3,0
+RANKING,Junior Subordinated,3
+RANKING,Preferred,1
+RANKING,SUKUK,0
+RANKING,Secured,5
+RANKING,Senior Bank,0
+RANKING,Senior Holdco,0
+RANKING,Senior Non-Preferred,0
+RANKING,Senior Preferred,0
+RANKING,Senior Secured,8
+RANKING,Senior Subordinated,3
+RANKING,Senior Unsecured,0
+RANKING,Sub Bank,0
+RANKING,Sub Holdco,0
+RANKING,Subordinated,6
+RANKING,Tier 2,0
+RANKING,Unsecured,2
+DAY_COUNT,30/360,5
+DAY_COUNT,30/365,1
+DAY_COUNT,30/ACT,1
+DAY_COUNT,ACT/ACT,2
+DAY_COUNT,ACT/ACT (ICMA),1
+DAY_COUNT,ACT/360,4
+DAY_COUNT,ACT/36S,3
+DAY_COUNT,ACT/36S (FIXED),1
+BUSINESS_DAY_CONVENTION,Following,6
+BUSINESS_DAY_CONVENTION,Modified Following,4
+BUSINESS_DAY_CONVENTION,Preceding,1
+BUSINESS_DAY_CONVENTION,Modified Preceding,1
+BUSINESS_DAY_CONVENTION,No Adjustment (Unadjusted),1
+COUPON_TYPE,Auction,0
+COUPON_TYPE,Defaulted,0
+COUPON_TYPE,Exchanged,0
+COUPON_TYPE,Fixed,6
+COUPON_TYPE,Fixed to Fixed,0
+COUPON_TYPE,Fixed to Float,0
+COUPON_TYPE,Flat Trading,0
+COUPON_TYPE,Float,4
+COUPON_TYPE,Funged,0
+COUPON_TYPE,Hybrid,0
+COUPON_TYPE,OID,0
+COUPON_TYPE,Pay-In-Kind,0
+COUPON_TYPE,Step,0
+COUPON_TYPE,Structured,0
+COUPON_TYPE,Tax Credit,0
+COUPON_TYPE,When Issued,0
+COUPON_TYPE,Zero,0

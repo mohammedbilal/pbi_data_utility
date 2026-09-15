@@ -1,7 +1,7 @@
 {
-  "active": "HSBC - QA1",
+  "active": "TRP - QA2",
   "environments": {
-    "QA1": {
+    "TRP - QA1": {
       "host_name": "qa-trowe-pbi1.cddev.genesis.global",
       "verify_ssl": true,
       "credentials": {
@@ -17,9 +17,20 @@
           "username": "",
           "password": ""
         }
+      },
+      "db": {
+        "enabled": false,
+        "host": "",
+        "port": 5432,
+        "database": "",
+        "schema": "public",
+        "user": "",
+        "password": "",
+        "sslmode": "prefer",
+        "mirror_enabled": false
       }
     },
-    "QA2": {
+    "TRP - QA2": {
       "host_name": "qa-trowe-pbi2.cddev.genesis.global",
       "verify_ssl": true,
       "credentials": {
@@ -35,6 +46,17 @@
           "username": "",
           "password": ""
         }
+      },
+      "db": {
+        "enabled": true,
+        "host": "qa-trowe-pbi2.cddev.genesis.global",
+        "port": 5432,
+        "database": "postgres",
+        "schema": "pbi",
+        "user": "postgres",
+        "password": "Password11*",
+        "sslmode": "prefer",
+        "mirror_enabled": false
       }
     },
     "HSBC - QA1": {
@@ -53,12 +75,97 @@
           "username": "Rahul",
           "password": "Password11*"
         }
+      },
+      "db": {
+        "enabled": false,
+        "host": "",
+        "port": 5432,
+        "database": "",
+        "schema": "public",
+        "user": "",
+        "password": "",
+        "sslmode": "prefer",
+        "mirror_enabled": false
+      }
+    },
+    "TRP - QA - Automation": {
+      "host_name": "qa-trowe-qaautomationpbitrowe.cddev.genesis.global",
+      "verify_ssl": true,
+      "credentials": {
+        "bonds_loans": {
+          "username": "Rahulk",
+          "password": "Password11*"
+        },
+        "interest": {
+          "username": "",
+          "password": ""
+        },
+        "tig_orders": {
+          "username": "",
+          "password": ""
+        }
+      },
+      "db": {
+        "enabled": true,
+        "host": "qa-trowe-qaautomationpbitrowe.cddev.genesis.global",
+        "port": 5432,
+        "database": "postgres",
+        "schema": "pbi",
+        "user": "postgres",
+        "password": "Password11*",
+        "sslmode": "prefer",
+        "mirror_enabled": false
+      }
+    },
+    "LGIM - QA1": {
+      "host_name": "qa-lgim-pbi1.cddev.genesis.global",
+      "verify_ssl": true,
+      "credentials": {
+        "bonds_loans": {
+          "username": "Rahulk",
+          "password": "Password11*"
+        },
+        "interest": {
+          "username": "",
+          "password": ""
+        },
+        "tig_orders": {
+          "username": "",
+          "password": ""
+        }
+      },
+      "db": {
+        "enabled": false,
+        "host": "",
+        "port": 5432,
+        "database": "",
+        "schema": "public",
+        "user": "",
+        "password": "",
+        "sslmode": "prefer",
+        "mirror_enabled": false
       }
     }
   },
   "reference_dirs": {
     "bonds": "C:\\python\\PBI_Test_Utility\\backend\\reference\\bonds",
-    "loans": "C:\\python\\PBI_Test_Utility\\backend\\reference\\loans"
+    "loans": "C:\\python\\PBI_Test_Utility\\backend\\reference\\loans",
+    "securitized": "C:\\python\\PBI_Test_Utility\\backend\\reference\\securitized",
+    "munis": "C:\\python\\PBI_Test_Utility\\backend\\reference\\munis"
+  },
+  "email": {
+    "recipient": "mohammed.bilal@genesis.global",
+    "save_copy_dir": ""
+  },
+  "compare": {
+    "store_path": "",
+    "ingest_window_minutes": 60,
+    "expected_datasource": "APPROVED_LLM",
+    "auto_capture": true,
+    "date_tolerance_days": {
+      "default": 0,
+      "maturity_date": 3
+    }
   },
   "tool_defaults": {
     "bonds": {
@@ -79,6 +186,40 @@
         3
       ],
       "deal_query_wait": 6
+    },
+    "securitized": {
+      "deals": 1,
+      "series_per_deal": [
+        1
+      ],
+      "tranches_per_series": [
+        3
+      ],
+      "securities_per_tranche": [
+        2
+      ],
+      "currency": "",
+      "coupon_type": "Fixed",
+      "deal_type": "",
+      "delay": 1
+    },
+    "munis": {
+      "deals": 1,
+      "series_per_deal": [
+        2
+      ],
+      "maturities_per_series": [
+        8
+      ],
+      "securities_per_maturity": [
+        1
+      ],
+      "state": "",
+      "sector": "",
+      "tax_status": "",
+      "deal_status": "",
+      "delay": 1,
+      "roadshow": ""
     },
     "interest": {
       "tranche_name": "12dbb95e-6d83-47e5-a9d9-2d416fae07d7",

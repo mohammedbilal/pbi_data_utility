@@ -1,0 +1,13 @@
+# Build output — bundled/minified, indexing it pollutes the graph
+frontend/dist/
+frontend/node_modules/
+
+# Python bytecode (nested __pycache__ is not covered by .gitignore)
+**/__pycache__/
+*.pyc
+backend/.venv/
+
+# Runtime state, not source
+backend/history.json
+backend/expected/
+graphify-out/

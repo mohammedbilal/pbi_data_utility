@@ -16,6 +16,11 @@ from uuid import uuid4
 
 import requests
 
+import expected_store
+from engines.email_builder import build_email
+from engines.expected_writer import build_expected
+from engines.outlook_sender import OutlookUnavailable, send_via_outlook
+
 _TIMEOUT = object()
 
 
@@ -186,13 +191,98 @@ def _gen_company() -> str:
     return f"{random.choice(_PREFIXES)} {random.choice(_SUFFIXES)}{random.choice(_MODIFIERS)}".strip()
 
 
-def _gen_ticker(name: str) -> str:
+_VOWELS = "AEIOU"
+
+
+def _ticker_stem(name: str) -> str:
+    """The issuer-derived base of a ticker — real-world shape, no randomness.
+
+    A ticker belongs to an *issuer*, so it is built from that issuer's name and
+    nothing else: the first word gives its leading letter plus its next
+    consonants, and every later word adds its initial. `BREOTASOLUTIONS
+    INDUSTRIES` -> `BRTSI`, `FINACOVENTURES RESOURCES` -> `FNCVR`.
+    """
+    words = [w for w in re.split(r"[^A-Za-z]+", name.upper()) if w]
+    if not words:
+        return "CO"
+    head = words[0]
+    stem = head[0] + "".join(c for c in head[1:] if c not in _VOWELS)
+    if len(stem) < 4:                       # vowel-heavy first word (e.g. AURA)
+        stem = head
+    base = (stem[:4] + "".join(w[0] for w in words[1:]))[:5]
+    # A short name ("3M Co") can leave 2 letters; top it up from the name's own
+    # letters so the ticker still looks like one.
     letters = "".join(c for c in name.upper() if c.isalpha())
-    base = (letters[:3] + letters[-3:]) or "CO"
-    t = base[:6]
-    while len(t) < 4:
-        t += random.choice(string.ascii_uppercase)
-    return t
+    for ch in letters:
+        if len(base) >= 4:
+            break
+        if ch not in base:
+            base += ch
+    return base or "CO"
+
+
+def _ticker_variants(name: str):
+    """The stem, then progressively different spellings of it.
+
+    Only reached when the stem is already taken — a second `… RESOURCES` issuer
+    has to differ somehow, and a re-spelling of the name beats a random string
+    because it still reads as that issuer's ticker.
+    """
+    letters = "".join(c for c in name.upper() if c.isalpha()) or "CO"
+    base = _ticker_stem(name)
+    yield base
+    core = base[:3] if len(base) > 3 else base
+    for ch in letters[1:] + string.ascii_uppercase:
+        yield (core + ch)[:5]
+    while True:                             # exhausted the alphabet — give up gracefully
+        yield (core + random.choice(string.ascii_uppercase)
+               + random.choice(_BASE36))[:5]
+
+
+class _TickerMinter:
+    """Hands out one ticker per issuer, unique across every deal it sees.
+
+    Per-deal rather than per-run (this replaced decision D8's single run-wide
+    ticker): a ticker identifies an issuer, so two issuers sharing one made the
+    emails wrong *and* broke row matching — `comparators._key_ticker` only
+    matches when exactly one row carries the ticker, so every deal after the
+    first fell through to the weaker keys.
+
+    Run isolation now comes from the run's ticker *set* (`util_run.ticker`),
+    which `db_reader.fetch_rows` turns into an `IN` clause. `taken` is seeded
+    with the tickers earlier runs already used, so that set stays unambiguous
+    across runs too.
+    """
+
+    def __init__(self, taken=None) -> None:
+        self.taken = {str(t).strip().upper() for t in (taken or ()) if str(t).strip()}
+        self.minted: List[str] = []
+
+    def mint(self, name: str, preferred: Optional[str] = None) -> str:
+        """The issuer's own ticker if it has one and it is free, else a minted one.
+
+        `preferred` is the ticker `reference/bonds/issuers.csv` already pairs
+        with this issuer — 4005 issuers, 4005 distinct tickers. That file is the
+        source of truth; deriving one from the name is the *fallback*, for an
+        issuer with no reference ticker (or a name invented by `_gen_company`),
+        and for the case where the reference ticker is already spoken for
+        because an earlier run used the same issuer.
+        """
+        cand = (preferred or "").strip().upper()
+        if cand and cand not in self.taken:
+            self.taken.add(cand)
+            self.minted.append(cand)
+            return cand
+        for cand in _ticker_variants(name):
+            if cand and cand not in self.taken:
+                self.taken.add(cand)
+                self.minted.append(cand)
+                return cand
+        raise RuntimeError("unreachable — _ticker_variants never ends")
+
+
+def _gen_ticker(name: str) -> str:
+    return _ticker_stem(name)
 
 
 def _gen_cusip() -> str:
@@ -336,16 +426,25 @@ def _build_tranche(ref: RefData, issuer: str, ticker: str,
             "DETAILS": det}
 
 
-def _pick_issuer(ref: RefData) -> Tuple[str, str]:
+def _pick_issuer(ref: RefData, minter: Optional[_TickerMinter] = None) -> Tuple[str, str]:
+    """One issuer and its ticker.
+
+    The reference CSV's ticker wins either way — the minter only guarantees no
+    two deals end up sharing one, deriving a ticker from the name when the CSV
+    has none to give.
+    """
     if ref.issuers:
         name, tick = random.choice(ref.issuers)
-        return name, tick or _gen_ticker(name)
-    name = _gen_company()
-    return name, _gen_ticker(name)
+    else:
+        name, tick = _gen_company(), None
+    if minter is not None:
+        return name, minter.mint(name, preferred=tick)
+    return name, tick or _gen_ticker(name)
 
 
-def _build_single(ref: RefData, force_currency: Optional[str] = None) -> Dict[str, Any]:
-    issuer, ticker = _pick_issuer(ref)
+def _build_single(ref: RefData, force_currency: Optional[str] = None,
+                  minter: Optional[_TickerMinter] = None) -> Dict[str, Any]:
+    issuer, ticker = _pick_issuer(ref, minter)
     sector = random.choice(ref.sectors)
     rating = random.choice(ref.ratings)
     exchange = random.choice(ref.exchanges)
@@ -357,8 +456,10 @@ def _build_single(ref: RefData, force_currency: Optional[str] = None) -> Dict[st
                           tenor, reg, freq, force_currency=force_currency)
 
 
-def _build_multi(ref: RefData, n: int, force_currency: Optional[str] = None) -> List[Dict[str, Any]]:
-    issuer, ticker = _pick_issuer(ref)
+def _build_multi(ref: RefData, n: int, force_currency: Optional[str] = None,
+                 minter: Optional[_TickerMinter] = None) -> List[Dict[str, Any]]:
+    # One issuer, one ticker, n tranches — the tranches of a deal share both.
+    issuer, ticker = _pick_issuer(ref, minter)
     sector = random.choice(ref.sectors)
     rating = random.choice(ref.ratings)
     exchange = random.choice(ref.exchanges)
@@ -425,17 +526,149 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
     dry_run = bool(params.get("dry_run", False))
     force_ccy = (params.get("currency") or "").strip().upper() or None
 
+    # ── Email options ─────────────────────────────────────────────────────────
+    # email_mode: "off" (POST only, today's behaviour) | "both" (POST + email)
+    #             | "email_only" (generate & send emails, no auth/POST)
+    email_mode = str(params.get("email_mode", "off") or "off")
+    email_format = params.get("email_format")
+    email_cfg = params.get("email", {}) or {}
+    send_email = email_mode in ("both", "email_only")
+    do_post = (email_mode != "email_only") and not dry_run
+
+    # ── Expectation capture (spec §18) ────────────────────────────────────────
+    # Every generated email also writes the database state it *should* produce
+    # into the util_* mirror tables, so the email-parsing agent's output can be
+    # diffed against ground truth later. SQLite only — no network, no
+    # credentials — so it works in dry_run and email_only, and it must never
+    # fail a run.
+    compare_cfg = params.get("compare", {}) or {}
+    capture_expected = bool(params.get(
+        "capture_expected",
+        bool(compare_cfg.get("auto_capture", True)) and email_mode != "off"))
+    # Each deal gets its own issuer-derived ticker; the minter keeps them
+    # distinct within the run and against the tickers earlier runs used, so the
+    # run's ticker set still isolates its rows in the app DB.
+    unique_ticker = bool(params.get("unique_ticker", capture_expected))
+    minter: Optional[_TickerMinter] = None
+    if unique_ticker:
+        try:
+            seed = expected_store.known_tickers()
+        except Exception:
+            seed = ()                       # store not reachable — never fail a run
+        minter = _TickerMinter(seed)
+    util_run_id: Optional[str] = None
+    captured = {"deals": 0, "tranches": 0}
+
+    def capture_deal(payloads: List[Dict], tag: str, subject: str, html: str,
+                     meta: Dict[str, Any], send_status: str, send_note: str) -> None:
+        """Write the expected rows for one email. Never raises."""
+        if not (capture_expected and util_run_id):
+            return
+        try:
+            captured["deals"] += 1
+            deal_seq = captured["deals"]
+            det0 = payloads[0].get("DETAILS", {})
+            email_id = expected_store.add_email({
+                "util_run_id": util_run_id, "util_deal_seq": deal_seq,
+                "subject": subject, "body_html": html,
+                "email_format": email_format or "", "recipient": email_cfg.get("recipient", ""),
+                "send_status": send_status, "send_note": send_note,
+                "rendered_fields": meta.get("rendered_fields") or [],
+                "ticker": det0.get("ISSUER_TICKER", ""), "tranches": len(payloads),
+            })
+            result = build_expected(payloads, {
+                **meta,
+                "sent_at": datetime.now(timezone.utc),
+                "email_format": email_format or "",
+                "expected_datasource": compare_cfg.get("expected_datasource") or "LLM",
+            }, deal_seq=deal_seq)
+            warnings = list(result["warnings"])
+            for table, rows in result["rows"].items():
+                _, length_warnings = expected_store.insert_rows(
+                    table, rows, util_run_id=util_run_id, util_source="expected",
+                    util_asset_class="bonds", util_email_id=email_id)
+                warnings.extend(length_warnings)
+            counts = result["counts"]
+            captured["tranches"] += counts["tranches"]
+            log(f"  {tag} ⊞ Expected state captured — 1 deal · "
+                f"{counts['tranches']} tranches · {counts['securities']} securities",
+                "success")
+            for w in warnings[:6]:
+                log(f"  {tag} ⊞ {w}", "warn")
+            if len(warnings) > 6:
+                log(f"  {tag} ⊞ … and {len(warnings) - 6} more capture warning(s).", "warn")
+        except Exception as exc:
+            log(f"  {tag} ⊞ Expectation capture failed — {exc}", "warn")
+
+    def emit_email(payloads: List[Dict], tag: str) -> bool:
+        """Build + send one broker email for a deal. Returns True on success.
+
+        The expectation is captured whether or not the send worked — an email
+        that never left the machine still has a payload worth diffing, and the
+        send outcome is recorded on util_email.send_status (spec §18.11).
+        """
+        try:
+            subject, html, meta = build_email("bonds", payloads, email_format)
+        except Exception as exc:
+            log(f"  {tag} ✉ Email build failed — {exc}", "error")
+            return False
+
+        sent = False
+        try:
+            note = send_via_outlook(subject, html,
+                                    email_cfg.get("recipient", ""),
+                                    email_cfg.get("save_copy_dir") or None)
+            send_status, send_note, sent = "sent", note, True
+            log(f"  {tag} ✉ Email {note}", "success")
+        except OutlookUnavailable as exc:
+            send_status, send_note = "skipped", str(exc)
+            log(f"  {tag} ✉ Email skipped — {exc}", "warn")
+        except Exception as exc:
+            send_status, send_note = "failed", str(exc)
+            log(f"  {tag} ✉ Email failed — {exc}", "error")
+
+        capture_deal(payloads, tag, subject, html, meta, send_status, send_note)
+        return sent
+
     ref_dir = Path(params.get("ref_dir", "C:\\python\\LATEST_PBI_JSON\\reference"))
     log(f"Loading reference data from {ref_dir} ...")
     ref = RefData(ref_dir)
     log(f"Reference data ready — {len(ref.issuers)} issuers, {len(ref.currencies)} currencies.")
     if force_ccy:
         log(f"Forcing currency = {force_ccy} for all tranches.")
+    if email_mode != "off":
+        log(f"Email mode = {email_mode} (format={email_format or 'default'}, "
+            f"recipient={email_cfg.get('recipient') or 'UNSET'}).", "warn")
+    if minter is not None:
+        log("Unique ticker per deal — each issuer keeps its own reference "
+            "ticker; both lanes of a deal share it (spec §18.7).")
+
+    if capture_expected:
+        try:
+            expected_store.set_store_path(compare_cfg.get("store_path") or None)
+            expected_store.init_store()
+            util_run_id = expected_store.add_run({
+                "tool": "bonds", "util_asset_class": "bonds",
+                "env": params.get("env_name", ""), "host": host,
+                "email_format": email_format or "", "email_mode": email_mode,
+                # Filled in at the end of the run — the tickers do not exist
+                # until their deals are built.
+                "ticker": "",
+                "params": {k: v for k, v in params.items() if k != "email"},
+            })
+            log(f"⊞ Expectation capture ON — util_run {util_run_id} in "
+                f"{expected_store.store_path()}")
+        except Exception as exc:
+            capture_expected = False
+            log(f"⊞ Expectation capture disabled — store unavailable: {exc}", "warn")
 
     # ── Auth ─────────────────────────────────────────────────────────────────
     token = None
-    if dry_run:
-        log("DRY RUN — generating payloads only, nothing will be sent.", "warn")
+    if not do_post:
+        if email_mode == "email_only":
+            log("EMAIL ONLY — generating & sending emails, no auth or POST.", "warn")
+        else:
+            log("DRY RUN — generating payloads only, nothing will be sent.", "warn")
     else:
         auth_url = f"https://{host}/sm/event-login-auth"
         log(f"Authenticating as {username} ...")
@@ -506,29 +739,45 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
     for i in range(single):
         if stop_event.is_set():
             break
-        payload = _build_single(ref, force_ccy)
+        payload = _build_single(ref, force_ccy, minter)
         det = payload["DETAILS"]
+        tag = f"[SINGLE {i+1}/{single}]"
+
+        if email_mode == "email_only":
+            total += 1
+            log(f"{tag} {det['ISSUER_NAME']} ({det['ISSUER_TICKER']}) "
+                f"{det['PRELIMINARY_SECURITY_TENOR']} {det['CURRENCY_CODE']}")
+            if emit_email([payload], tag):
+                ok += 1
+            else:
+                err += 1
+            if i < single - 1 and not stop_event.is_set():
+                _sleep()
+            continue
+
         total += 1
         if dry_run:
             ok += 1
-            log(f"[SINGLE {i+1}/{single}] DRY RUN | {det['ISSUER_NAME']} "
+            log(f"{tag} DRY RUN | {det['ISSUER_NAME']} "
                 f"{det['PRELIMINARY_SECURITY_TENOR']} {det['CURRENCY_CODE']}")
             log(json.dumps(payload, indent=2))
-            continue
-        status, body = post_one(payload)
-        if status is None:
-            if stop_event.is_set():
-                log(f"[SINGLE {i+1}/{single}] Stopped", "warn")
-                break
-            err += 1
-            log(f"[SINGLE {i+1}/{single}] Connection error — {body}", "error")
-        elif 200 <= status < 300:
-            ok += 1
-            log(f"[SINGLE {i+1}/{single}] OK {status} | {det['ISSUER_NAME']} "
-                f"{det['PRELIMINARY_SECURITY_TENOR']} {det['CURRENCY_CODE']}")
         else:
-            err += 1
-            log(f"[SINGLE {i+1}/{single}] FAILED {status} | {body[:200]}", "error")
+            status, body = post_one(payload)
+            if status is None:
+                if stop_event.is_set():
+                    log(f"{tag} Stopped", "warn")
+                    break
+                err += 1
+                log(f"{tag} Connection error — {body}", "error")
+            elif 200 <= status < 300:
+                ok += 1
+                log(f"{tag} OK {status} | {det['ISSUER_NAME']} "
+                    f"{det['PRELIMINARY_SECURITY_TENOR']} {det['CURRENCY_CODE']}")
+            else:
+                err += 1
+                log(f"{tag} FAILED {status} | {body[:200]}", "error")
+        if email_mode == "both":
+            emit_email([payload], tag)
         if i < single - 1 and not stop_event.is_set():
             _sleep()
 
@@ -537,9 +786,21 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
         if stop_event.is_set():
             break
         n = tranches_plan[j] if j < len(tranches_plan) else tranches_plan[-1]
-        tranches = _build_multi(ref, n, force_ccy)
-        issuer = tranches[0]["DETAILS"]["ISSUER_NAME"]
-        log(f"[MULTI {j+1}/{multi}] {issuer} — {n} tranches")
+        tranches = _build_multi(ref, n, force_ccy, minter)
+        det0 = tranches[0]["DETAILS"]
+        issuer = det0["ISSUER_NAME"]
+        log(f"[MULTI {j+1}/{multi}] {issuer} ({det0['ISSUER_TICKER']}) — {n} tranches")
+
+        if email_mode == "email_only":
+            total += 1
+            if emit_email(tranches, f"[MULTI {j+1}/{multi}]"):
+                ok += 1
+            else:
+                err += 1
+            if j < multi - 1 and not stop_event.is_set():
+                _sleep()
+            continue
+
         for k, t in enumerate(tranches, 1):
             if stop_event.is_set():
                 break
@@ -550,25 +811,41 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
                 log(f"  [T{k}/{n}] DRY RUN | {det['PRELIMINARY_SECURITY_TENOR']} "
                     f"{det['CURRENCY_CODE']}")
                 log(json.dumps(t, indent=2))
-                continue
-            status, body = post_one(t)
-            if status is None:
-                if stop_event.is_set():
-                    log(f"  [T{k}/{n}] Stopped", "warn")
-                    break
-                err += 1
-                log(f"  [T{k}/{n}] Connection error — {body}", "error")
-            elif 200 <= status < 300:
-                ok += 1
-                log(f"  [T{k}/{n}] OK {status} | {det['PRELIMINARY_SECURITY_TENOR']} "
-                    f"{det['CURRENCY_CODE']}")
             else:
-                err += 1
-                log(f"  [T{k}/{n}] FAILED {status} | {body[:200]}", "error")
+                status, body = post_one(t)
+                if status is None:
+                    if stop_event.is_set():
+                        log(f"  [T{k}/{n}] Stopped", "warn")
+                        break
+                    err += 1
+                    log(f"  [T{k}/{n}] Connection error — {body}", "error")
+                elif 200 <= status < 300:
+                    ok += 1
+                    log(f"  [T{k}/{n}] OK {status} | {det['PRELIMINARY_SECURITY_TENOR']} "
+                        f"{det['CURRENCY_CODE']}")
+                else:
+                    err += 1
+                    log(f"  [T{k}/{n}] FAILED {status} | {body[:200]}", "error")
             if k < n and not stop_event.is_set():
                 _sleep()
+        if email_mode == "both":
+            emit_email(tranches, f"[MULTI {j+1}/{multi}]")
         if j < multi - 1 and not stop_event.is_set():
             _sleep()
+
+    if capture_expected and util_run_id:
+        try:
+            # The run's ticker set — one per deal. db_reader turns this into the
+            # IN clause that pulls back exactly this run's rows.
+            tickers = ",".join(minter.minted) if minter else ""
+            expected_store.update_run(util_run_id, deals=captured["deals"],
+                                      tranches=captured["tranches"],
+                                      ticker=tickers)
+            log(f"⊞ Expectations for run {util_run_id} — {captured['deals']} deal(s), "
+                f"{captured['tranches']} tranche(s)"
+                + (f" · tickers {tickers}" if tickers else "") + ".")
+        except Exception as exc:
+            log(f"⊞ Could not finalise the capture run — {exc}", "warn")
 
     log(f"Done — Success={ok}  Failed={err}  Total={total}",
         "success" if err == 0 else "warn")

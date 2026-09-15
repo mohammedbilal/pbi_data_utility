@@ -466,6 +466,8 @@ input, select, button, textarea { font-family: var(--font-mono); }
 .h-tool-bonds    { color: var(--sky); }
 .h-tool-loans    { color: var(--teal); }
 .h-tool-interest { color: var(--indigo); }
+.h-tool-securitized { color: var(--rose); }
+.h-tool-munis    { color: var(--sky-dim); }
 .h-env    { color: var(--text-secondary); }
 .h-params { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .h-ok   { color: var(--emerald); }
@@ -483,6 +485,10 @@ input, select, button, textarea { font-family: var(--font-mono); }
 .h-dur { color: var(--text-muted); }
 .h-rerun { color: var(--sky); cursor: pointer; font-size: 14px; text-align: center; background: none; border: none; padding: 0; }
 
+/* 64px of air is right when this is the whole page (History, an empty runs
+   list); inside a stack of collapsible panels it reads as a rendering fault.
+   Found in the S8 visual pass. */
+.panel-body .history-empty, .compare-empty { padding: 26px 0; }
 .history-empty {
   color: var(--text-faint);
   font-style: italic;
@@ -589,6 +595,8 @@ input, select, button, textarea { font-family: var(--font-mono); }
 }
 .alert-error { background: var(--rose-glow); color: var(--rose); border: 1px solid rgba(251,113,133,.35); }
 .alert-success { background: var(--emerald-glow); color: var(--emerald); border: 1px solid rgba(74,222,128,.35); }
+.alert-warn { background: var(--attention-glow); color: var(--attention); border: 1px solid rgba(245,158,11,.35); }
+.alert-line { color: var(--text-secondary); font-size: 10.5px; margin-top: 5px; }
 
 /* ── Toast ──────────────────────────────────────────────────── */
 .toast {
@@ -644,6 +652,287 @@ input, select, button, textarea { font-family: var(--font-mono); }
   color: var(--text-muted); font-size: 13px; line-height: 1; padding: 0;
 }
 .drop-zone-file button:hover { color: var(--rose); }
+
+/* ── Email Compare (spec §18.15) ─────────────────────────────────────────── */
+/* The three panels stack and the whole tab scrolls as one page. Without the
+   flex-none children and the overflow override below, `.view`'s fixed height
+   squeezes every card and each grows its own scrollbar — the diff pushes the
+   runs list down to a few pixels. */
+.compare-view {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto; padding-right: 4px;
+}
+.compare-view > * { flex: 0 0 auto; }
+.compare-view .card { min-height: 0; }
+.compare-view .card-body { overflow: visible; }
+
+.segmented {
+  display: inline-flex; align-self: flex-start;
+  border: 1px solid var(--border-default); border-radius: 6px; overflow: hidden;
+}
+.seg-btn {
+  background: none; border: none; border-right: 1px solid var(--border-default);
+  padding: 6px 16px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em;
+  color: var(--text-muted);
+}
+.seg-btn:last-child { border-right: none; }
+.seg-btn:hover:not(:disabled) { color: var(--text-primary); }
+.seg-btn.active { background: var(--sky-glow); color: var(--sky); }
+.seg-btn:disabled { color: var(--text-faint); cursor: not-allowed; }
+
+.card-note {
+  float: right; display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-mono); font-size: 10.5px;
+  font-weight: 400; letter-spacing: 0; color: var(--text-muted);
+}
+.empty-note {
+  color: var(--text-muted); font-size: 12px; line-height: 1.7;
+  padding: 6px 2px; max-width: 70ch;
+}
+.btn-small { padding: 3px 11px; font-size: 10.5px; }
+.btn-link {
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-family: var(--font-mono); font-size: 11px; color: var(--sky);
+  text-decoration: none;
+}
+.btn-link:hover { text-decoration: underline; }
+.btn-link.danger { color: var(--text-faint); font-size: 13px; }
+.btn-link.danger:hover { color: var(--rose); }
+
+/* 1 · runs ---------------------------------------------------------------- */
+.cmp-runs { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cmp-runs th {
+  text-align: left; padding: 0 10px 7px; font-family: var(--font-mono);
+  font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--text-faint); font-weight: 500;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.cmp-runs td { padding: 9px 10px; border-bottom: 1px solid var(--border-subtle); }
+.cmp-runs tbody tr { cursor: pointer; }
+.cmp-runs tbody tr:hover { background: var(--bg-raised); }
+.cmp-runs tbody tr.open { background: var(--sky-glow); }
+.cmp-runs .num { text-align: right; font-family: var(--font-mono); }
+.cmp-runs .row-actions { text-align: right; width: 34px; }
+.mono { font-family: var(--font-mono); font-size: 11.5px; }
+.muted { color: var(--text-faint); }
+
+/* 2 · loading the app's rows ---------------------------------------------- */
+.cmp-source { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.cmp-source .drop-zone { margin: 0; }
+@media (max-width: 1100px) { .cmp-source { grid-template-columns: 1fr; } }
+
+/* 3 · result -------------------------------------------------------------- */
+.cmp-score { text-align: center; padding: 18px 0 20px; }
+.cmp-score-value {
+  font-size: 42px; font-weight: 300; letter-spacing: -.02em; color: var(--sky);
+  line-height: 1;
+}
+.cmp-score-line {
+  margin-top: 9px; font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-secondary);
+}
+.cmp-score-note {
+  margin-top: 5px; font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-faint);
+}
+
+.cmp-tabs {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; margin-bottom: 4px;
+}
+.cmp-tab {
+  background: none; border: none; cursor: pointer; padding: 5px 12px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+  border-radius: 5px; display: inline-flex; align-items: center; gap: 7px;
+}
+.cmp-tab:hover { color: var(--text-primary); }
+.cmp-tab.active { background: var(--bg-raised); color: var(--text-primary); }
+.cmp-tab .ok  { color: var(--emerald); }
+.cmp-tab .bad { color: var(--rose); }
+.cmp-filter {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-muted); cursor: pointer;
+}
+.cmp-legend { font-size: 11px; color: var(--text-faint); }
+
+/* deal → tranche → fields */
+.cmp-deal {
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  margin-bottom: 10px; overflow: hidden;
+}
+.cmp-deal.clean { border-color: var(--border-subtle); }
+.cmp-deal-head, .cmp-tranche-head {
+  width: 100%; background: var(--bg-raised); border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  padding: 9px 12px; color: var(--text-primary); font-size: 12.5px;
+}
+.cmp-deal-head:hover, .cmp-tranche-head:hover { background: var(--bg-surface); }
+.cmp-caret { color: var(--text-faint); font-size: 10px; width: 10px; }
+.cmp-deal-name {
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--text-secondary);
+}
+.cmp-tally {
+  margin-left: auto; font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-muted); white-space: nowrap;
+}
+.cmp-tally em { font-style: normal; }
+.cmp-deal-body { padding: 4px 12px 10px; }
+
+.cmp-tranche {
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+  margin-top: 8px; overflow: hidden;
+}
+.cmp-tranche-head { background: transparent; font-size: 12px; padding: 7px 10px; }
+.cmp-tranche-body { padding: 0 10px 8px; }
+
+.cmp-block { margin-top: 8px; }
+.cmp-block-head {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--text-faint);
+  padding: 4px 2px; border-bottom: 1px solid var(--border-subtle);
+}
+.cmp-none { font-size: 11px; color: var(--text-faint); padding: 7px 2px; margin: 0; }
+
+/* fields the email never mentioned — present for reference, never counted */
+.cmp-aside { margin-top: 6px; }
+.cmp-aside > summary {
+  cursor: pointer; list-style: none; padding: 5px 2px;
+  font-size: 10.5px; color: var(--text-faint);
+}
+.cmp-aside > summary::marker, .cmp-aside > summary::-webkit-details-marker { display: none; }
+.cmp-aside > summary::before { content: '▸ '; }
+.cmp-aside[open] > summary::before { content: '▾ '; }
+.cmp-aside > summary:hover { color: var(--text-muted); }
+.cmp-aside .cmp-diff td { opacity: .55; }
+.v-aside { color: var(--text-faint); }
+
+.cmp-diff { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cmp-diff th {
+  text-align: left; padding: 8px 10px 7px; font-family: var(--font-mono);
+  font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--text-faint); font-weight: 500;
+}
+.cmp-diff td {
+  padding: 7px 10px; border-top: 1px solid var(--border-subtle);
+  vertical-align: top; word-break: break-word;
+}
+.cmp-diff td:nth-child(1) { width: 26%; color: var(--sky); }
+.cmp-diff td:nth-child(2), .cmp-diff td:nth-child(3) { width: 30%; }
+.cmp-diff td:nth-child(4) {
+  width: 14%; font-family: var(--font-mono); font-size: 11px;
+}
+.cmp-note {
+  margin-top: 4px; font-size: 10px; color: var(--text-faint);
+  font-family: var(--font-mono); line-height: 1.5;
+}
+
+/* the four verdicts, and nothing else */
+.v-match    { color: var(--emerald); }
+.v-mismatch { color: var(--rose); }
+.v-missing  { color: var(--attention); }
+.v-extra    { color: var(--indigo); opacity: .7; }
+
+/* ── Uploaded email sets (spec 19.5) ───────────────────────────
+   The body is real third-party HTML from an inbox, so it renders inside a
+   sandboxed iframe. It is given a plain white surface on purpose: broker mail
+   assumes a light background and sets its own colours, so inheriting the dark
+   theme would leave dark text on dark. */
+.email-preview {
+  margin-top: 13px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-raised);
+}
+.email-preview-head {
+  padding: 7px 11px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-sunken, var(--bg-raised));
+}
+.email-frame {
+  display: block;
+  width: 100%;
+  height: 420px;
+  border: 0;
+  background: #fff;
+}
+.warn-text { color: var(--attention); }
+
+/* ── Provenance split (spec 19.20.1, D17) ──────────────────────
+   The headline blends three questions; these show them apart. */
+.cmp-provenance { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 9px;
+  padding-top: 9px; border-top: 1px solid var(--border-default); }
+.cmp-prov { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-mono); }
+.cmp-prov-name { font-size: 10.5px; color: var(--text-secondary); }
+.cmp-prov-value { font-size: 13px; color: var(--text-primary); }
+.cmp-prov-count { font-size: 10px; color: var(--text-muted, #6b7280); }
+.prov-tag { margin-left: 6px; font-size: 9px; padding: 1px 4px; border-radius: 3px;
+  font-family: var(--font-mono); text-transform: lowercase; vertical-align: middle; }
+.prov-derived { background: var(--indigo, #6366f1); color: #fff; opacity: .8; }
+.prov-stamped { background: var(--border-default); color: var(--text-secondary); }
+
+/* ── Labelling form (spec 19.6) ────────────────────────────────
+   Email on the left, form on the right: you read one and fill the other. */
+.label-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 13px; margin-top: 13px; }
+@media (max-width: 1100px) { .label-split { grid-template-columns: 1fr; } }
+.label-split .email-preview { margin-top: 0; position: sticky; top: 0; align-self: start; }
+.label-split .email-frame { height: 560px; }
+
+.label-form { border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--bg-raised); padding: 13px; max-height: 620px; overflow-y: auto; }
+.label-intro { font-size: 11px; color: var(--text-secondary); margin: 0 0 11px; line-height: 1.5; }
+.label-deal { border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  padding: 11px; margin-bottom: 11px; }
+.label-deal-head, .label-tranche-head {
+  display: flex; align-items: center; gap: 8px; font-family: var(--font-mono);
+  font-size: 11px; color: var(--sky); text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 9px;
+}
+.label-tranche { border-top: 1px dashed var(--border-default); padding-top: 11px; margin-top: 11px; }
+.label-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 9px; }
+.label-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.label-field > label { font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--text-secondary); display: flex; justify-content: space-between; gap: 6px; }
+.label-field input[type="text"], .label-field select {
+  width: 100%; background: var(--bg-sunken, var(--bg-base)); color: var(--text-primary);
+  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+  padding: 5px 7px; font-size: 12px; font-family: var(--font-mono);
+}
+.label-field input::placeholder { color: var(--text-muted, #6b7280); font-style: italic; }
+.label-field .tier { font-size: 9.5px; opacity: .65; white-space: nowrap; }
+.label-field .tier.t1 { color: var(--rose); }
+.label-field.matching-only { opacity: .85; }
+.label-field .field-hint { font-size: 10px; color: var(--text-muted, #6b7280); line-height: 1.4; }
+.label-field .field-warn { font-size: 10px; color: var(--attention); }
+
+/* A suggestion read from the email — click to accept. Deliberately not a filled
+   value: nothing is committed until Save (D11). */
+.suggestion {
+  align-self: flex-start; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; background: var(--sky-glow); color: var(--sky);
+  border: 1px dashed var(--sky); border-radius: var(--radius-sm);
+  padding: 2px 6px; font-family: var(--font-mono); font-size: 10.5px; cursor: pointer;
+}
+.suggestion:hover { background: var(--sky); color: var(--bg-base); }
+
+.label-securities { margin-top: 11px; }
+.label-security-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.label-security-row input, .label-security-row select {
+  background: var(--bg-sunken, var(--bg-base)); color: var(--text-primary);
+  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+  padding: 4px 6px; font-size: 11px; font-family: var(--font-mono); min-width: 92px; flex: 1 1 92px;
+}
+.label-security-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.label-actions { display: flex; gap: 9px; align-items: center; margin-top: 11px;
+  padding-top: 11px; border-top: 1px solid var(--border-default); flex-wrap: wrap; }
+.label-actions .spacer { flex: 1; }
+.label-showall { display: flex; align-items: center; gap: 5px; font-size: 11px;
+  color: var(--text-secondary); font-family: var(--font-mono); cursor: pointer; }
 
 /* ── Scrollbars ─────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 7px; height: 7px; }

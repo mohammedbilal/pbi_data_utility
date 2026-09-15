@@ -1,0 +1,41 @@
+NAME,ROLES
+"Wilmington Trust, N.A.",trustee|custodian|backup_servicer
+"Citibank, N.A.",trustee|paying_agent|registrar|calculation_agent|custodian|backup_servicer
+Deutsche Bank Trust Company Americas,trustee|paying_agent|registrar|calculation_agent|custodian|backup_servicer
+"U.S. Bank Trust Company, National Association",trustee|paying_agent|registrar|calculation_agent|custodian|backup_servicer
+The Bank of New York Mellon,trustee|paying_agent|registrar|calculation_agent|custodian|backup_servicer
+"Computershare Trust Company, N.A.",trustee|paying_agent|registrar|backup_servicer
+"Wells Fargo Bank, N.A.",trustee|paying_agent|custodian
+Regions Bank,trustee|paying_agent|registrar
+"BOKF, NA",trustee|paying_agent
+"UMB Bank, N.A.",trustee|paying_agent|registrar
+"Wilmington Savings Fund Society, FSB",trustee|custodian
+TMI Trust Company,trustee|backup_servicer
+GLAS Trust Company LLC,trustee|calculation_agent
+Delaware Trust Company,trustee
+Argent Institutional Trust Company,trustee|paying_agent
+Wilmington Trust (London) Limited,trustee|registrar
+BNP Paribas Trust Corporation UK Limited,trustee|paying_agent|registrar
+HSBC Bank plc,paying_agent|registrar|custodian
+Elavon Financial Services DAC,paying_agent|registrar|custodian
+"Citibank, N.A., London Branch",paying_agent|registrar|calculation_agent
+"The Bank of New York Mellon, London Branch",paying_agent|registrar|custodian
+"Deutsche Bank AG, London Branch",paying_agent|calculation_agent
+Banco Santander S.A.,paying_agent|custodian
+Intertrust Trustees Limited,trustee
+CSC Capital Markets UK Limited,trustee|registrar
+Ocorian Corporate Services (UK) Limited,trustee
+Apex Corporate Trust Services,trustee|calculation_agent
+Vistra Corporate Services,trustee|registrar
+Sanne Group plc,calculation_agent
+"Virtus Group, LP",calculation_agent|backup_servicer
+Trimont Real Estate Advisors,calculation_agent|backup_servicer
+Situs Asset Management LLC,backup_servicer
+Vervent Inc.,backup_servicer
+"Systems & Services Technologies, Inc.",backup_servicer
+Portfolio Financial Servicing Company,backup_servicer
+Midland Loan Services,backup_servicer|calculation_agent
+Computershare Loan Services,backup_servicer
+State Street Bank and Trust Company,custodian|paying_agent
+Northern Trust Company,custodian
+BNP Paribas Securities Services,custodian|registrar

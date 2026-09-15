@@ -31,6 +31,24 @@ def start_tool_run(tool: str, params: Dict[str, Any], engine_fn: Callable) -> Di
         params.setdefault("ref_dir", ref_dirs.get("bonds", ""))
     elif tool == "loans":
         params.setdefault("ref_dir", ref_dirs.get("loans", ""))
+    elif tool == "securitized":
+        params.setdefault("ref_dir", ref_dirs.get("securitized", ""))
+    elif tool == "munis":
+        params.setdefault("ref_dir", ref_dirs.get("munis", ""))
+
+    # Email config (recipient / save-copy dir) lives top-level in
+    # environments.json and is injected server-side, so the frontend only sends
+    # the per-run email_mode / email_format choices. See spec §17.
+    if tool in ("bonds", "loans"):
+        params.setdefault("email", envs.get("email", {}))
+
+    # Expectation-capture config (store path, expected datasource, auto_capture)
+    # lives in the top-level `compare` block, same as `email` above. The engine
+    # also wants the environment's display name for the util_run record, which
+    # the env dict itself does not carry. See spec §18.10.
+    if tool == "bonds":
+        params.setdefault("compare", envs.get("compare", {}))
+        params.setdefault("env_name", envs.get("active", ""))
 
     run_id = create_run(tool)
     set_active_run(tool, run_id)

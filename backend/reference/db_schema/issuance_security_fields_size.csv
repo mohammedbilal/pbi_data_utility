@@ -1,0 +1,13 @@
+"column_name","character_maximum_length"
+"issuance_key",150
+"issuance_security_id",64
+"security_type",64
+"isin",64
+"cusip",64
+"figi",64
+"registration_type",64
+"regulation_subcategory",64
+"update_time",NULL
+"security_status",64
+"record_id",NULL
+"timestamp",NULL

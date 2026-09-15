@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getHistory } from '../api.js'
 
-const TOOL_LABEL = { bonds: 'Bonds', loans: 'Loans', interest: 'Interest', tig_orders: 'TIG Orders', csv_upload: 'CSV Upload' }
+const TOOL_LABEL = { bonds: 'Bonds', loans: 'Loans', securitized: 'Securitized', munis: 'Munis', interest: 'Interest', tig_orders: 'TIG Orders', csv_upload: 'CSV Upload' }
 
 function formatTime(ts) {
   if (!ts) return '—'

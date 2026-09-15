@@ -1,0 +1,85 @@
+{
+  "DETAILS": {
+    "ANNOUNCEMENT_DT": 1789430400000,
+    "BND_BANK": "BofA Securities",
+    "CHANGE_FLAGS": {
+      "CHILD_UPDATED": true,
+      "EDITED_FIELDS": []
+    },
+    "DEAL_DESCRIPTION": "Regents Of The University Of California General Revenue Bonds 2026 Series Ce And Cf",
+    "DEAL_SIZE": 1977680000,
+    "DEAL_STATUS": "Awaiting Allotments",
+    "DEAL_TYPE": "Negotiated",
+    "EXPECTED_PRICING_DATE": 1790640000000,
+    "ISSUER_COUNTRY": "US",
+    "IS_ROADSHOW": false,
+    "ORDER_PERIOD_BEGIN_DATE": 1790726400000,
+    "ORDER_PERIOD_END_DATE": 1790899200000,
+    "RISK_COUNTRY": "US",
+    "SERIES": [
+      {
+        "AWARD_DATE": 1790899200000,
+        "CALL_FEATURE_DESCRIPTION": "CALLABLE 02/01/2030 @100.0, Subject to Special and Optional Redemption as described on pages 14-17 of the POS.  The payment of the Purchase Price of each of the 2026 Series B/C Bonds subject to mandatory tender for purchase on the Initial Reset Date will be secured solely by a direct pay obligation of Fannie Mae under the applicable Fannie Mae Credit Enhancement Instrument. Please see pages 13-14 of the POS for more information.",
+        "CHANGE_FLAGS": {
+          "EDITED_FIELDS": [],
+          "CHILD_UPDATED": true
+        },
+        "DATED_DATE": 1791331200000,
+        "DELIVERY_DATE": 1791504000000,
+        "ENHANCEMENT": "None",
+        "FIRST_COUPON_DATE": 1808352000000,
+        "INTEREST_TYPE": "Fixed",
+        "INVESTOR_STATUS": "PENDING",
+        "PURPOSE": "EDU",
+        "SECTOR": "Education",
+        "SERIES_CODE": "CE",
+        "SERIES_DESCRIPTION": "Multi-Family Housing Revenue Bonds 2026 Series C (Non-AMT) (Sustainable Development Bonds)",
+        "SERIES_FITCH_RATING": "AA+",
+        "SERIES_MONEY_TYPE": "New Money",
+        "SERIES_MOODYS_RATING": "Aa2",
+        "SERIES_SANDP_RATING": "AA+",
+        "SERIES_SIZE": 991705000,
+        "SERIES_STATUS": "ACTIVE",
+        "SOURCE_OF_REPAYMENT": "General Fund",
+        "TAX_STATUS": "Tax-Exempt",
+        "TRADE_DATE": 1790812800000,
+        "TRADE_DESK": "Munis",
+        "TRANCHES": [
+          {
+            "CHANGE_FLAGS": {
+              "EDITED_FIELDS": [],
+              "CHILD_UPDATED": true
+            },
+            "COUPON": 3.1,
+            "COUPON_TYPE": "Fixed",
+            "MATURITY_AMOUNT": 60860,
+            "MATURITY_DATE": 1822867200000,
+            "MATURITY_DESCRIPTION": "On Par Price with 2 year maturity",
+            "MATURITY_STATUS": "ACTIVE",
+            "MINIMUM_INCREMENT": 1000,
+            "MINIMUM_PIECE": 1000,
+            "MULTIPLES": 5,
+            "PRICE": 100,
+            "SECURITIES": [
+              {
+                "SECURITY_STATUS": "ACTIVE",
+                "CUSIP": "64972KNN1",
+                "CHANGE_FLAGS": {}
+              }
+            ],
+            "SPREAD": -77,
+            "TRANCHE_CURRENCY": "USD",
+            "YIELD": 3.1
+          }
+        ]
+      }
+    ],
+    "STATE": "CA",
+    "SYNDICATE": "J.P. Morgan Securities LLC; Siebert Williams Shank & Co., LLC; Barclays Capital Inc.; Wells Fargo Bank, N.A. Municipal Finance Group; Academy Securities; Jefferies LLC; Loop Capital Markets; Mischler Financial Group, Inc.; Morgan Stanley Co. LLC; Piper Sandler & Co; PNC Capital Markets LLC; Ramirez & Co., Inc.; Raymond James & Associates, Inc.; RBC Capital Markets; Stifel, Nicolaus & Company, Inc.; American Veterans Group, PBC  SDVOB; TD Financial Products LLC; Truist Securities Inc.; Bancroft Capital; Blaylock Van, LLC; BofA Securities; Cabrera Capital Markets LLC; Fidelity Capital Markets; Goldman Sachs & Co. LLC; HilltopSecurities Inc",
+    "USE_OF_PROCEEDS": "None",
+    "WIRE_TYPE": "FINAL PRICING"
+  },
+  "MESSAGE_TYPE": "EVENT_CREATE_NEW_MUNIS_ISSUANCE",
+  "SESSION_AUTH_TOKEN": "aHj6C6FikOHnQzh99Tb43cQZic2PwUNa",
+  "SOURCE_REF": "a4ae6601-6e3d-4803-bfa9-edbf46d3424d"
+}

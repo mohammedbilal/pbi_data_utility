@@ -3,3 +3,30 @@
 /backend/.venv
 /backend/__pycache__
 /backend/environments
+
+# graphify knowledge graph — generated, ~2MB, rebuild with `graphify extract . --code-only`
+graphify-out/
+
+# expectation store (spec §18) — runtime data, not source. A binary SQLite file
+# that grows with every capture run; rebuilt automatically by init_store().
+/backend/expected
+
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# Frontend generated build
+frontend/dist/
+
+# Local data files
+master/LIST_LOOKUP_TROWE-209_MUNIS_INSERT.csv
+master/MUNIS_DATA.csv
+
+# Histoty file
+/backend/history.json
+
+# Local Claude settings
+.claude/
+
+
+*.bak-*

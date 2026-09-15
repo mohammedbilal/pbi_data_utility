@@ -1,0 +1,392 @@
+asset_class,table,column,source_kind,source,tier,normalizer,notes
+bonds,issuance_deal,first_deal_id,system,app-assigned (uuid),x,,
+bonds,issuance_deal,master_deal_id,system,app-assigned (uuid),x,,
+bonds,issuance_deal,latest_issuance_data_id,system,FK - newest audit row across the deal (18.9),x,,
+bonds,issuance_deal,issuer_name,payload,tranche-1 ISSUER_NAME,1,ci_text,
+bonds,issuance_deal,issuer_rating,payload,tranche-1 ISSUER_RATING,2,ratings,
+bonds,issuance_deal,rating_outlook,derived,outlook rendered beside each agency rating (Stable),2,ci_text,
+bonds,issuance_deal,deal_id_datasource,const,"compare.expected_datasource (LLM = email lane, BBG = API/baseline lane)",2,ci_text,D1/D6
+bonds,issuance_deal,pbi_deal_status,const,OPEN,2,ci_text,
+bonds,issuance_deal,deal_created_on,system,app timestamp,x,,
+bonds,issuance_deal,deal_closed_on,system,app timestamp,x,,
+bonds,issuance_deal,deal_modified_on,system,app timestamp,x,,
+bonds,issuance_deal,total_issuances,derived,expected t_issuance_data row count for the deal,2,numeric,informational until update sequences land (18.13.2)
+bonds,issuance_deal,trade_desk,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,registration_type,payload,tranche-1 REGISTRATION_TYPE,1,vocab,
+bonds,issuance_deal,regulation_subcategory,null,,2,vocab,bonds generator has no source for this column
+bonds,issuance_deal,mandate_text,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,marketing_link,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,risk_country,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,bookrunners,derived,union of tranche BOOKRUNNERS,2,list_set,
+bonds,issuance_deal,bnd_bank,payload,tranche-1 BND_BANK,2,ci_text,
+bonds,issuance_deal,use_of_proceeds,pool,_POOLS['uop_bond'] -> vocab-mapped code,2,vocab,
+bonds,issuance_deal,issuer_sector,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,tranche_settlement_date,payload,tranche-1 TRANCHE_SETTLEMENT_DATE,2,date_day,
+bonds,issuance_deal,minimum_piece,null,tranche-1 MINIMUM_PIECE,x,numeric,"app applies its own denomination default, ignoring the email"
+bonds,issuance_deal,minimum_increment,null,tranche-1 MINIMUM_INCREMENT,x,numeric,"app applies its own denomination default, ignoring the email"
+bonds,issuance_deal,tranche_issuer_business_description,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,deal_closest_match,system,app association field - see 18.13.1 backlog,x,,
+bonds,issuance_deal,investor_status_closed_on,system,app timestamp,x,,
+bonds,issuance_deal,announcement_dt,email_meta,"email send date, day precision",2,date_day,
+bonds,issuance_deal,id_bb_company,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,is_roadshow,payload,IS_ROADSHOW (false),3,bool,
+bonds,issuance_deal,long_company_name,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,issuer_country,payload,tranche-1 ISSUER_COUNTRY,2,ci_text,
+bonds,issuance_deal,cv_common_ticker,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,cv_common_ticker_exch,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,cv_start_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,short_company_name,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,db_number_of_tranches,derived,tranche count in the email,1,numeric,
+bonds,issuance_deal,lev_loans_sponsor,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,deal_currencies,derived,"distinct tranche currencies, comma-joined",1,list_set,
+bonds,issuance_deal,db_internal_deal_id,system,source-system id,x,,
+bonds,issuance_deal,db_external_deal_id,system,source-system id,x,,
+bonds,issuance_deal,pbi_ipreo_deal_id,system,source-system id,x,,
+bonds,issuance_deal,bbg_deal_id,system,source-system id,x,,
+bonds,issuance_deal,manual_deal_id,system,source-system id,x,,
+bonds,issuance_deal,issuer_lei,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,issuer_ticker,payload,tranche-1 ISSUER_TICKER,1,ci_text,
+bonds,issuance_deal,investor_status,const,PENDING,3,ci_text,
+bonds,issuance_deal,blast_status,const,false,3,bool,
+bonds,issuance_deal,lead_manager,null,,x,,bonds generator has no source for this column
+bonds,issuance_deal,priced,const,false,3,bool,
+bonds,issuance_deal,record_id,system,app-assigned,x,,
+bonds,issuance_deal,timestamp,system,app-assigned,x,,
+bonds,issuance_data,issuance_data_id,system,app-assigned (uuid + node suffix),x,,
+bonds,issuance_data,datasource_id,const,"compare.expected_datasource (LLM = email lane, BBG = API/baseline lane)",2,ci_text,D1/D6 - also assigns the lane
+bonds,issuance_data,issuance_data_key,system,app-assigned (BBG:<figi>-F pattern),x,,
+bonds,issuance_data,insert_time,system,"capture/ingest timestamp - drives the match window, not scored",x,date_day,
+bonds,issuance_data,book_status,const,Book Open,3,ci_text,
+bonds,issuance_data,read_by,system,app state,x,,
+bonds,issuance_data,message_url,system,app-assigned,x,,
+bonds,issuance_data,deal_id,system,app-assigned,x,,
+bonds,issuance_data,alt_deal_id,system,app-assigned / source-system id,x,,
+bonds,issuance_data,deal_created_on,system,app timestamp,x,,
+bonds,issuance_data,deal_modified_on,system,app timestamp,x,,
+bonds,issuance_data,deal_modified_by_id,system,app-assigned,x,,
+bonds,issuance_data,bookrunners,payload,BOOKRUNNERS,2,list_set,engine emits slash-separated; DB comma-separated
+bonds,issuance_data,bookrunners_as_supplied,payload,BOOKRUNNERS,3,list_set,
+bonds,issuance_data,bnd_bank,payload,BND_BANK,2,ci_text,
+bonds,issuance_data,bnd_bank_as_supplied,payload,BND_BANK,3,ci_text,
+bonds,issuance_data,asset_class_type,payload,ASSET_CLASS_TYPE,2,ci_text,Corporate
+bonds,issuance_data,bond_class,payload,BOND_CLASS,2,vocab,app abbreviates: Investment Grade -> Ig
+bonds,issuance_data,bond_seniority,payload,BOND_SENIORITY,2,ci_text,stored as supplied - no app translation
+bonds,issuance_data,security_type,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,sec_regs_ticker,payload,SEC_REGS_TICKER,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance_data,sec_regs_isin,payload,SEC_REGS_ISIN,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance_data,sec_regs_cusip,payload,SEC_REGS_CUSIP,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance_data,sec_regs_figi,payload,SEC_REGS_FIGI,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance_data,sec_144a_ticker,payload,SEC_144A_TICKER,1,ci_text,144A and 144A/Reg S only
+bonds,issuance_data,sec_144a_isin,payload,SEC_144A_ISIN,1,ci_text,144A and 144A/Reg S only
+bonds,issuance_data,sec_144a_cusip,payload,SEC_144A_CUSIP,1,ci_text,144A and 144A/Reg S only
+bonds,issuance_data,sec_144a_figi,payload,SEC_144A_FIGI,1,ci_text,144A and 144A/Reg S only
+bonds,issuance_data,sec_other_ticker,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,sec_other_isin,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,sec_other_cusip,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,sec_other_figi,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,currency_code,payload,CURRENCY_CODE,1,ci_text,
+bonds,issuance_data,deal_document,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,is_reg_s,derived,REGISTRATION_TYPE contains 'Reg S',2,bool,
+bonds,issuance_data,is_144a,derived,REGISTRATION_TYPE contains '144A',2,bool,
+bonds,issuance_data,years_to_maturity,derived,tenor as a number,x,numeric,app never derives it on the email path
+bonds,issuance_data,is_perpetual,payload,IS_PERPETUAL,3,bool,
+bonds,issuance_data,trade_date,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,maturity_date,payload,MATURITY_DATE,1,date_day,date tolerance 3 days
+bonds,issuance_data,day_count,payload,DAY_COUNT,2,vocab,
+bonds,issuance_data,coupon_frequency,payload,COUPON_FREQUENCY,2,vocab,Semi-Annual -> Semi Annual
+bonds,issuance_data,coupon,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,coupon_type,payload,COUPON_TYPE,1,ci_text,Fixed | Float
+bonds,issuance_data,coupon_index,derived,float benchmark parsed from IPTS; NULL when COUPON_TYPE=Fixed,2,ci_text,
+bonds,issuance_data,spread,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,first_coupon_dt,payload,FIRST_COUPON_DATE,2,date_day,payload key is FIRST_COUPON_DATE
+bonds,issuance_data,bpl_entity_id,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,covered_ind,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,issuer_ticker,payload,ISSUER_TICKER,1,ci_text,unique per run; primary DB filter + match key
+bonds,issuance_data,issuer_equity_ticker,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,issuer_name,payload,ISSUER_NAME,1,ci_text,varchar(100) - copied verbatim
+bonds,issuance_data,issuer_rating,payload,ISSUER_RATING,2,ratings,combined Moody's/S&P/Fitch string
+bonds,issuance_data,rating_outlook,derived,outlook rendered beside each agency rating (Stable),2,ci_text,email glues it onto the rating; agent must split - 18.6.1
+bonds,issuance_data,issuer_lei,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,issuer_sector,payload,ISSUER_SECTOR,2,ci_text,stored as supplied - no app translation
+bonds,issuance_data,issuer_country,payload,ISSUER_COUNTRY,2,ci_text,
+bonds,issuance_data,risk_country,payload,RISK_COUNTRY,2,ci_text,
+bonds,issuance_data,tranche_id,system,app-assigned,x,,
+bonds,issuance_data,tranche_state,const,ANNOUNCED,3,ci_text,
+bonds,issuance_data,hedge_book_state,system,app state,x,,
+bonds,issuance_data,tranche_name,system,app-derived label; email carries no tranche name,x,,
+bonds,issuance_data,tranche_currency,payload,TRANCHE_CURRENCY,1,ci_text,
+bonds,issuance_data,expected_tranche_size,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,will_not_grow,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,current_tbook_size,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,tranche_settlement_date,payload,TRANCHE_SETTLEMENT_DATE,1,date_day,
+bonds,issuance_data,tranche_settlement_period,derived,n from the email's T+n settlement line,2,ci_text,
+bonds,issuance_data,tranche_comment,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,registration_type,payload,REGISTRATION_TYPE,1,vocab,app vocabulary differs - see vocab_map
+bonds,issuance_data,regulation_subcategory,null,,2,vocab,bonds generator has no source for this column
+bonds,issuance_data,tranche_structure,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,issue_underwriter,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,is_esg,null,,2,bool,bonds generator has no source for this column
+bonds,issuance_data,esg_type,null,,2,vocab,bonds generator has no source for this column
+bonds,issuance_data,esg_comments,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,re_offer_price,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,re_offer_yield,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,guarantors_rating_agency,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,guarantors_credit_rating,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,guarantors_credit_routlook,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,is_unsecured,derived,BOND_SENIORITY contains 'Unsecured',2,bool,
+bonds,issuance_data,total_issued_amount,payload,TOTAL_ISSUED_AMOUNT,1,amount,email may render 750mm
+bonds,issuance_data,tapped_indicator,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,announcement_dt,email_meta,"email send date, day precision",2,date_day,
+bonds,issuance_data,exch_names,payload,EXCH_NAMES,2,ci_text,
+bonds,issuance_data,benchmark_for_pricing,derived,float benchmark parsed from IPTS; NULL when COUPON_TYPE=Fixed,2,ci_text,
+bonds,issuance_data,hedge_ratio,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,tranche_rating,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,issue_expected_rating,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,rating_classification,null,BOND_CLASS -> IG / HY,x,vocab,app stores only 'Not Rated' - never derived from the email
+bonds,issuance_data,minimum_piece,null,MINIMUM_PIECE,x,numeric,"app applies its own denomination default, ignoring the email"
+bonds,issuance_data,minimum_increment,null,MINIMUM_INCREMENT,x,numeric,"app applies its own denomination default, ignoring the email"
+bonds,issuance_data,corpred_classification,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,call_indicator,derived,Optional Redemption pool value implies a call,3,bool,
+bonds,issuance_data,put_indicator,derived,false - the bond emails state no put,3,bool,
+bonds,issuance_data,first_call_date,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,category,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,current_size,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,order_quantity,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,level_type,system,app-derived from the level supplied,x,,
+bonds,issuance_data,ipts,payload,IPTS,1,ci_text,varchar(120) - copied verbatim
+bonds,issuance_data,current_level,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,nip,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,analyst_reco,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,criteria,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,is_preliminary_security,system,app-derived,x,,
+bonds,issuance_data,short_company_name,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,long_company_name,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,security_des,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,market_issue,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,id_bb_company,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,calc_typ_des,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,first_cpn_period_typ,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,preliminary_security_tenor,payload,PRELIMINARY_SECURITY_TENOR,x,tenor,app stores the tenor in `tenor` and leaves this NULL - `tenor` is scored instead
+bonds,issuance_data,issue_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,int_acc_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,nxt_put_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,is_convertible,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,cv_common_ticker,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,cv_common_ticker_exch,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,conversion_ratio_at_issue,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,cv_start_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,trade_desk,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,investor_status_source,system,app state,x,,
+bonds,issuance_data,is_roadshow,payload,IS_ROADSHOW,3,bool,
+bonds,issuance_data,use_of_proceeds,pool,_POOLS['uop_bond'] -> vocab-mapped code,2,vocab,"varchar(64): expectation is the CODE, not the prose - 18.6.1"
+bonds,issuance_data,mandate_text,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,marketing_link,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,tenor,derived,PRELIMINARY_SECURITY_TENOR -> '5 Y',2,tenor,
+bonds,issuance_data,launch_price,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,db_number_of_tranches,derived,count of tranches in the deal,1,numeric,high-signal LLM metric - did it see every tranche
+bonds,issuance_data,tranche_pricing_date,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,expected_pricing_date,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,pricing_to_follow,system,app-derived,x,,
+bonds,issuance_data,tranche_issuer_business_description,pool,_POOLS['business_bond'] (bond_narrative format only),3,text,
+bonds,issuance_data,original_issue_discount,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,yield_to_worst,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,commitment_date,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,call_protection,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,repricing_trpim,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,size_final,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,final_spread,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,final_floor,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,meeting_date,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,lev_loans_sponsor,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,floor,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,oid,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,lev_loans_yield,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,cov_lite,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,bond_deal,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,exclude_from_report,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,stw,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,final_oid,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,ytw,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,final_yield,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,issuance_bond_type,const,ISSUANCE,3,ci_text,
+bonds,issuance_data,product_group,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,analyst_comment,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,analyst_ratings,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,erisa_eligible,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,credit_enhancement,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,dealer_assumptions,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,trp_assumptions,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,prepay_call_assumptions,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,wal,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,meeting_details,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,final_price,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,tranche_status,payload,TRANCHE_STATUS,2,ci_text,
+bonds,issuance_data,issuance_security_id,system,app-assigned,x,,
+bonds,issuance_data,security_status,const,ACTIVE,3,ci_text,
+bonds,issuance_data,emerging_mkt_ind,payload,EMERGING_MKT_IND,3,bool,
+bonds,issuance_data,total_issued_after_tap,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,nc_till,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,guidance,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,final_terms,null,,x,,bonds generator has no source for this column
+bonds,issuance_data,lead_manager,system,app-derived from bookrunners,x,,
+bonds,issuance_data,pbi_ipreo_deal_id,system,source-system id,x,,
+bonds,issuance_data,record_id,system,app-assigned,x,,
+bonds,issuance_data,timestamp,system,app-assigned,x,,
+bonds,issuance,issuance_key,system,app-assigned (uuid),x,,
+bonds,issuance,issuance_created_by,const,"compare.expected_datasource (LLM = email lane, BBG = API/baseline lane)",2,ci_text,t_issuance has no datasource_id - this is the lane discriminator here
+bonds,issuance,book_status,const,Book Open,3,ci_text,
+bonds,issuance,issuance_data_id,system,FK - must equal the newest util_issuance_data row for this tranche (18.9),x,,
+bonds,issuance,issuance_created_on,system,app timestamp,x,,
+bonds,issuance,read_by,system,app state,x,,
+bonds,issuance,order_read_by,system,app state,x,,
+bonds,issuance,book_closing_timer_active,system,app state,x,,
+bonds,issuance,active_orders_count,system,app state,x,,
+bonds,issuance,deal_id,system,app-assigned,x,,
+bonds,issuance,deal_modified_by_id,system,app-assigned,x,,
+bonds,issuance,deal_document,system,app state,x,,
+bonds,issuance,bookrunners,payload,BOOKRUNNERS,2,list_set,engine emits slash-separated; DB comma-separated
+bonds,issuance,bnd_bank,payload,BND_BANK,2,ci_text,
+bonds,issuance,update_time,system,app timestamp,x,,
+bonds,issuance,tranche_id,system,app-assigned,x,,
+bonds,issuance,tranche_state,const,ANNOUNCED,3,ci_text,
+bonds,issuance,hedge_book_state,system,app state,x,,
+bonds,issuance,tranche_name,system,app-derived label; email carries no tranche name,x,,
+bonds,issuance,tranche_currency,payload,TRANCHE_CURRENCY,1,ci_text,
+bonds,issuance,expected_tranche_size,null,,x,,bonds generator has no source for this column
+bonds,issuance,will_not_grow,null,,x,,bonds generator has no source for this column
+bonds,issuance,current_tbook_size,null,,x,,bonds generator has no source for this column
+bonds,issuance,tranche_settlement_date,payload,TRANCHE_SETTLEMENT_DATE,1,date_day,
+bonds,issuance,tranche_settlement_period,derived,n from the email's T+n settlement line,2,ci_text,
+bonds,issuance,tranche_comment,null,,x,,bonds generator has no source for this column
+bonds,issuance,registration_type,payload,REGISTRATION_TYPE,1,vocab,app vocabulary differs - see vocab_map
+bonds,issuance,regulation_subcategory,null,,2,vocab,bonds generator has no source for this column
+bonds,issuance,tranche_structure,null,,x,,bonds generator has no source for this column
+bonds,issuance,issue_underwriter,null,,x,,bonds generator has no source for this column
+bonds,issuance,guarantors_rating_agency,null,,x,,bonds generator has no source for this column
+bonds,issuance,guarantors_credit_rating,null,,x,,bonds generator has no source for this column
+bonds,issuance,guarantors_credit_routlook,null,,x,,bonds generator has no source for this column
+bonds,issuance,is_unsecured,derived,BOND_SENIORITY contains 'Unsecured',2,bool,
+bonds,issuance,total_issued_amount,payload,TOTAL_ISSUED_AMOUNT,1,amount,email may render 750mm
+bonds,issuance,tapped_indicator,null,,x,,bonds generator has no source for this column
+bonds,issuance,re_offer_price,null,,x,,bonds generator has no source for this column
+bonds,issuance,re_offer_yield,null,,x,,bonds generator has no source for this column
+bonds,issuance,announcement_dt,email_meta,"email send date, day precision",2,date_day,
+bonds,issuance,exch_names,payload,EXCH_NAMES,2,ci_text,
+bonds,issuance,benchmark_for_pricing,derived,float benchmark parsed from IPTS; NULL when COUPON_TYPE=Fixed,2,ci_text,
+bonds,issuance,hedge_ratio,null,,x,,bonds generator has no source for this column
+bonds,issuance,tranche_rating,null,,x,,bonds generator has no source for this column
+bonds,issuance,issue_expected_rating,null,,x,,bonds generator has no source for this column
+bonds,issuance,rating_classification,null,BOND_CLASS -> IG / HY,x,vocab,app stores only 'Not Rated' - never derived from the email
+bonds,issuance,minimum_piece,null,MINIMUM_PIECE,x,numeric,"app applies its own denomination default, ignoring the email"
+bonds,issuance,minimum_increment,null,MINIMUM_INCREMENT,x,numeric,"app applies its own denomination default, ignoring the email"
+bonds,issuance,corpred_classification,null,,x,,bonds generator has no source for this column
+bonds,issuance,issuer_ticker,payload,ISSUER_TICKER,1,ci_text,unique per run; primary DB filter + match key
+bonds,issuance,issuer_rating,payload,ISSUER_RATING,2,ratings,combined Moody's/S&P/Fitch string
+bonds,issuance,issuer_lei,null,,x,,bonds generator has no source for this column
+bonds,issuance,issuer_sector,payload,ISSUER_SECTOR,2,ci_text,stored as supplied - no app translation
+bonds,issuance,issuer_country,payload,ISSUER_COUNTRY,2,ci_text,
+bonds,issuance,issuer_equity_ticker,null,,x,,bonds generator has no source for this column
+bonds,issuance,risk_country,payload,RISK_COUNTRY,2,ci_text,
+bonds,issuance,asset_class_type,payload,ASSET_CLASS_TYPE,2,ci_text,Corporate
+bonds,issuance,bond_class,payload,BOND_CLASS,2,vocab,app abbreviates: Investment Grade -> Ig
+bonds,issuance,bond_seniority,payload,BOND_SENIORITY,2,ci_text,stored as supplied - no app translation
+bonds,issuance,security_type,null,,x,,bonds generator has no source for this column
+bonds,issuance,sec_regs_ticker,payload,SEC_REGS_TICKER,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance,sec_regs_isin,payload,SEC_REGS_ISIN,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance,sec_regs_cusip,payload,SEC_REGS_CUSIP,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance,sec_regs_figi,payload,SEC_REGS_FIGI,1,ci_text,Reg S and 144A/Reg S only
+bonds,issuance,sec_144a_ticker,payload,SEC_144A_TICKER,1,ci_text,144A and 144A/Reg S only
+bonds,issuance,sec_144a_isin,payload,SEC_144A_ISIN,1,ci_text,144A and 144A/Reg S only
+bonds,issuance,sec_144a_cusip,payload,SEC_144A_CUSIP,1,ci_text,144A and 144A/Reg S only
+bonds,issuance,sec_144a_figi,payload,SEC_144A_FIGI,1,ci_text,144A and 144A/Reg S only
+bonds,issuance,sec_other_ticker,null,,x,,bonds generator has no source for this column
+bonds,issuance,sec_other_isin,null,,x,,bonds generator has no source for this column
+bonds,issuance,sec_other_cusip,null,,x,,bonds generator has no source for this column
+bonds,issuance,sec_other_figi,null,,x,,bonds generator has no source for this column
+bonds,issuance,currency_code,payload,CURRENCY_CODE,1,ci_text,
+bonds,issuance,is_reg_s,derived,REGISTRATION_TYPE contains 'Reg S',2,bool,
+bonds,issuance,is_144a,derived,REGISTRATION_TYPE contains '144A',2,bool,
+bonds,issuance,years_to_maturity,derived,tenor as a number,x,numeric,app never derives it on the email path
+bonds,issuance,is_perpetual,payload,IS_PERPETUAL,3,bool,
+bonds,issuance,trade_date,null,,x,,bonds generator has no source for this column
+bonds,issuance,maturity_date,payload,MATURITY_DATE,1,date_day,date tolerance 3 days
+bonds,issuance,day_count,payload,DAY_COUNT,2,vocab,
+bonds,issuance,coupon_frequency,payload,COUPON_FREQUENCY,2,vocab,Semi-Annual -> Semi Annual
+bonds,issuance,coupon,null,,x,,bonds generator has no source for this column
+bonds,issuance,coupon_type,payload,COUPON_TYPE,1,ci_text,Fixed | Float
+bonds,issuance,coupon_index,derived,float benchmark parsed from IPTS; NULL when COUPON_TYPE=Fixed,2,ci_text,
+bonds,issuance,spread,null,,x,,bonds generator has no source for this column
+bonds,issuance,original_issue_discount,null,,x,,bonds generator has no source for this column
+bonds,issuance,yield_to_worst,null,,x,,bonds generator has no source for this column
+bonds,issuance,first_coupon_dt,payload,FIRST_COUPON_DATE,2,date_day,payload key is FIRST_COUPON_DATE
+bonds,issuance,bpl_entity_id,null,,x,,bonds generator has no source for this column
+bonds,issuance,covered_ind,null,,x,,bonds generator has no source for this column
+bonds,issuance,is_esg,null,,2,bool,bonds generator has no source for this column
+bonds,issuance,esg_type,null,,2,vocab,bonds generator has no source for this column
+bonds,issuance,esg_comments,null,,x,,bonds generator has no source for this column
+bonds,issuance,call_indicator,derived,Optional Redemption pool value implies a call,3,bool,
+bonds,issuance,put_indicator,derived,false - the bond emails state no put,3,bool,
+bonds,issuance,first_call_date,null,,x,,bonds generator has no source for this column
+bonds,issuance,category,null,,x,,bonds generator has no source for this column
+bonds,issuance,current_size,null,,x,,bonds generator has no source for this column
+bonds,issuance,order_quantity,null,,x,,bonds generator has no source for this column
+bonds,issuance,level_type,system,app-derived from the level supplied,x,,
+bonds,issuance,ipts,payload,IPTS,1,ci_text,varchar(120) - copied verbatim
+bonds,issuance,current_level,null,,x,,bonds generator has no source for this column
+bonds,issuance,nip,null,,x,,bonds generator has no source for this column
+bonds,issuance,analyst_reco,null,,x,,bonds generator has no source for this column
+bonds,issuance,criteria,null,,x,,bonds generator has no source for this column
+bonds,issuance,has_analyst_comment,system,app-derived,x,,
+bonds,issuance,coupon_type_conflict,system,app-derived,x,,
+bonds,issuance,previous_deal_id,system,app-assigned,x,,
+bonds,issuance,is_preliminary_security,system,app-derived,x,,
+bonds,issuance,short_company_name,null,,x,,bonds generator has no source for this column
+bonds,issuance,long_company_name,null,,x,,bonds generator has no source for this column
+bonds,issuance,security_des,null,,x,,bonds generator has no source for this column
+bonds,issuance,market_issue,null,,x,,bonds generator has no source for this column
+bonds,issuance,id_bb_company,null,,x,,bonds generator has no source for this column
+bonds,issuance,calc_typ_des,null,,x,,bonds generator has no source for this column
+bonds,issuance,first_cpn_period_typ,null,,x,,bonds generator has no source for this column
+bonds,issuance,preliminary_security_tenor,payload,PRELIMINARY_SECURITY_TENOR,x,tenor,app stores the tenor in `tenor` and leaves this NULL - `tenor` is scored instead
+bonds,issuance,issue_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance,int_acc_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance,nxt_put_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance,is_convertible,null,,x,,bonds generator has no source for this column
+bonds,issuance,cv_common_ticker,null,,x,,bonds generator has no source for this column
+bonds,issuance,cv_common_ticker_exch,null,,x,,bonds generator has no source for this column
+bonds,issuance,conversion_ratio_at_issue,null,,x,,bonds generator has no source for this column
+bonds,issuance,cv_start_dt,null,,x,,bonds generator has no source for this column
+bonds,issuance,trade_desk,null,,x,,bonds generator has no source for this column
+bonds,issuance,filled_quantity,system,order state,x,,
+bonds,issuance,is_roadshow,payload,IS_ROADSHOW,3,bool,
+bonds,issuance,use_of_proceeds,pool,_POOLS['uop_bond'] -> vocab-mapped code,2,vocab,"varchar(64): expectation is the CODE, not the prose - 18.6.1"
+bonds,issuance,mandate_text,null,,x,,bonds generator has no source for this column
+bonds,issuance,marketing_link,null,,x,,bonds generator has no source for this column
+bonds,issuance,tenor,derived,PRELIMINARY_SECURITY_TENOR -> '5 Y',2,tenor,
+bonds,issuance,launch_price,null,,x,,bonds generator has no source for this column
+bonds,issuance,db_number_of_tranches,derived,count of tranches in the deal,1,numeric,high-signal LLM metric - did it see every tranche
+bonds,issuance,symphony_blast_sent,system,app state,x,,
+bonds,issuance,tranche_pricing_date,null,,x,,bonds generator has no source for this column
+bonds,issuance,expected_pricing_date,null,,x,,bonds generator has no source for this column
+bonds,issuance,tranche_issuer_business_description,pool,_POOLS['business_bond'] (bond_narrative format only),3,text,
+bonds,issuance,tranche_status,payload,TRANCHE_STATUS,2,ci_text,
+bonds,issuance,tranche_reg_type,payload,REGISTRATION_TYPE,3,vocab,
+bonds,issuance,total_issued_after_tap,null,,x,,bonds generator has no source for this column
+bonds,issuance,emerging_mkt_ind,payload,EMERGING_MKT_IND,3,bool,
+bonds,issuance,nc_till,null,,x,,bonds generator has no source for this column
+bonds,issuance,guidance,null,,x,,bonds generator has no source for this column
+bonds,issuance,final_terms,null,,x,,bonds generator has no source for this column
+bonds,issuance,record_id,system,app-assigned,x,,
+bonds,issuance,timestamp,system,app-assigned,x,,
+bonds,issuance_security,issuance_key,system,app-assigned - FK to t_issuance,x,,
+bonds,issuance_security,issuance_security_id,system,app-assigned,x,,
+bonds,issuance_security,security_type,const,NOT_SPECIFIED,3,ci_text,
+bonds,issuance_security,isin,payload,SEC_REGS_ISIN or SEC_144A_ISIN for this row's flavour,1,ci_text,
+bonds,issuance_security,cusip,payload,matching SEC_*_CUSIP,1,ci_text,
+bonds,issuance_security,figi,payload,matching SEC_*_FIGI,2,ci_text,
+bonds,issuance_security,registration_type,derived,"row flavour (Reg S | 144A), vocab-mapped",2,vocab,
+bonds,issuance_security,regulation_subcategory,null,,2,vocab,bonds generator has no source for this column
+bonds,issuance_security,update_time,system,app timestamp,x,,
+bonds,issuance_security,security_status,const,ACTIVE,3,ci_text,
+bonds,issuance_security,record_id,system,app-assigned,x,,
+bonds,issuance_security,timestamp,system,app-assigned,x,,

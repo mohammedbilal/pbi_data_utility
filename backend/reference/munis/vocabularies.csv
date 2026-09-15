@@ -1,0 +1,94 @@
+FIELD,VALUE,LIST_ORDER,WEIGHT,SOURCE
+DEAL_TYPE,Negotiated,0,2135,observed
+DEAL_TYPE,Competitive,1,7,observed
+WIRE_TYPE,FINAL PRICING,0,930,observed
+WIRE_TYPE,PREL PRICING,1,475,observed
+WIRE_TYPE,ALLOTS,2,402,observed
+WIRE_TYPE,CUSIP,3,223,observed
+WIRE_TYPE,REPRICE,4,99,observed
+SERIES_MONEY_TYPE,New Money,0,1773,observed
+SERIES_MONEY_TYPE,Refunding,1,318,observed
+SERIES_MONEY_TYPE,Remarketing,2,41,observed
+SOURCE_OF_REPAYMENT,General Fund,0,6,observed
+SOURCE_OF_REPAYMENT,Personal Income Tax Revenue,1,5,observed
+SOURCE_OF_REPAYMENT,Sales Tax Revenue,2,2,observed
+INTEREST_TYPE,Fixed,0,2130,observed
+INTEREST_TYPE,Variable,1,2,observed
+ENHANCEMENT,Assured Guaranty Inc,0,53,observed
+ENHANCEMENT,Pennsylvania State Aid Intercept Program,1,41,observed
+ENHANCEMENT,State Aid,2,5,observed
+ENHANCEMENT,Municipal Bond Insurance,3,3,observed
+ENHANCEMENT,Insurance,4,2,observed
+SECURITY_TYPE,Bond,0,730,observed
+SECURITY_TYPE,Put,1,26,observed
+SECURITY_TYPE,Zero,2,4,observed
+PURPOSE,HSG,0,341,observed
+PURPOSE,GEN,1,263,observed
+PURPOSE,SCH,2,161,observed
+PURPOSE,WTR,3,126,observed
+PURPOSE,PWR,4,113,observed
+PURPOSE,TRA,5,101,observed
+PURPOSE,MFH,6,91,observed
+PURPOSE,AIR,7,91,observed
+PURPOSE,SWR,8,89,observed
+PURPOSE,BLD,9,74,observed
+PURPOSE,PIT,10,72,observed
+PURPOSE,HLT,11,65,observed
+PURPOSE,GGP,12,50,observed
+PURPOSE,REF,13,49,observed
+PURPOSE,501,14,45,observed
+PURPOSE,EDU,15,44,observed
+PURPOSE,SOL,16,44,observed
+PURPOSE,POR,17,40,observed
+PURPOSE,MIS,18,31,observed
+PURPOSE,HIG,19,30,observed
+PURPOSE,HWY,20,27,observed
+PURPOSE,SLT,21,25,observed
+PURPOSE,COO,22,25,observed
+PURPOSE,CIG,23,23,observed
+PURPOSE,COP,24,22,observed
+PURPOSE,UTL,25,17,observed
+PURPOSE,STL,26,17,observed
+PURPOSE,BRI,27,17,observed
+PURPOSE,SFH,28,10,observed
+PURPOSE,General Purposes,29,8,observed
+PURPOSE,IDR,30,7,observed
+PURPOSE,LTG,31,5,observed
+PURPOSE,Infrastructure,32,3,observed
+PURPOSE,EIR,33,2,observed
+PURPOSE,GAS,34,2,observed
+PURPOSE,Education,35,2,observed
+STATE,NY,0,437,observed
+STATE,CA,1,395,observed
+STATE,MA,2,165,observed
+STATE,FL,3,128,observed
+STATE,MI,4,94,observed
+STATE,KY,5,84,observed
+STATE,RI,6,78,observed
+STATE,MD,7,71,observed
+STATE,TX,8,62,observed
+STATE,CT,9,62,observed
+STATE,NE,10,61,observed
+STATE,VA,11,52,observed
+STATE,HI,12,48,observed
+STATE,IL,13,47,observed
+STATE,CO,14,41,observed
+STATE,PA,15,41,observed
+STATE,OR,16,40,observed
+STATE,DC,17,39,observed
+STATE,SC,18,34,observed
+STATE,UT,19,28,observed
+STATE,WI,20,23,observed
+STATE,LA,21,23,observed
+STATE,TN,22,19,observed
+STATE,IN,23,19,observed
+STATE,WA,24,18,observed
+STATE,IA,25,15,observed
+STATE,NH,26,8,observed
+STATE,OH,27,4,observed
+STATE,WY,28,4,observed
+STATE,AR,29,2,observed
+MULTIPLES,5,0,2121,observed
+MULTIPLES,1,1,8,observed
+RATING_OUTLOOK,Stable,0,11,observed
+RATING_OUTLOOK,Negative,1,2,observed

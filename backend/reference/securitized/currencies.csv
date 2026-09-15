@@ -1,0 +1,4 @@
+CODE,COUNTRY,COUNTRY_NAME,FLOAT_BENCHMARK,INDEX_LEVEL,CLEARING_SYSTEM,DEPOSITORY,ISIN_PREFIX,GOVERNING_LAW,LISTING_EXCHANGE,DEFAULT_REG_TYPES,DAY_COUNT
+USD,US,United States,SOFR,4.33,DTC|Euroclear,DTC|Euroclear / Clearstream,US,NY Law,Unlisted,144A|Reg S,30/360
+EUR,ES|IT|FR|DE|NL|IE,Spain|Italy|France|Germany|Netherlands|Ireland,EURIBOR 3M|ESTR,2.35|2.15,Euroclear|Clearstream,Euroclear / Clearstream,XS,Irish Law|Dutch Law|English Law,Euronext Dublin|LuxSE,Reg S,ACT/360
+GBP,GB,United Kingdom,SONIA,4.20,Euroclear|Clearstream,Euroclear / Clearstream,XS,English Law,London Stock Exchange,Reg S,ACT/36S

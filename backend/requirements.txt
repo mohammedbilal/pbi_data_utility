@@ -6,3 +6,13 @@ pandas>=2.0.0
 numpy>=1.26.0
 openpyxl>=3.1.0
 python-multipart>=0.0.9
+psycopg[binary]>=3.1
+pywin32>=306 ; sys_platform == "win32"
+# test-only: fastapi.testclient needs httpx. Declared so a fresh Setup.bat
+# reproduces the environment the compare tests were verified in — without it a
+# later session silently skips them and reports a false pass.
+httpx>=0.27.0
+# Reads Outlook .msg for uploaded email sets (spec 19.4, D15). Chosen over Outlook
+# COM automation: offline, no Outlook process, works headless. Already present in
+# the dev venv at 0.56.0; declared so Setup.bat reproduces it.
+extract-msg>=0.54

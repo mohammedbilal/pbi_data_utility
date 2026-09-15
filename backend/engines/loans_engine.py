@@ -14,8 +14,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from faker import Faker
 
+from engines.email_builder import build_email
 from engines.loan_utils.cusip import generate_cusip, generate_roll_cusips
 from engines.loan_utils.dates import generate_deal_dates, generate_tranche_dates
+from engines.outlook_sender import OutlookUnavailable, send_via_outlook
 
 fake = Faker()
 
@@ -311,6 +313,30 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
     deal_query_wait = float(params.get("deal_query_wait", 6))
     dry_run = bool(params.get("dry_run", False))
     currency = (params.get("currency") or "").upper() or None
+
+    # ── Email options ─────────────────────────────────────────────────────────
+    # email_mode: "off" (POST only) | "both" (POST + email) | "email_only"
+    email_mode = str(params.get("email_mode", "off") or "off")
+    email_format = params.get("email_format")
+    email_cfg = params.get("email", {}) or {}
+    send_email = email_mode in ("both", "email_only")
+    do_post = (email_mode != "email_only") and not dry_run
+
+    def emit_email(payloads: List[Dict], tag: str) -> bool:
+        """Build + send one broker email for a loan deal. True on success."""
+        try:
+            subject, html, _meta = build_email("loans", payloads, email_format)
+            note = send_via_outlook(subject, html,
+                                    email_cfg.get("recipient", ""),
+                                    email_cfg.get("save_copy_dir") or None)
+            log(f"{tag} ✉ Email {note}", "success")
+            return True
+        except OutlookUnavailable as exc:
+            log(f"{tag} ✉ Email skipped — {exc}", "warn")
+            return False
+        except Exception as exc:
+            log(f"{tag} ✉ Email failed — {exc}", "error")
+            return False
     tranches_per_multi_raw = params.get("tranches_per_multi", [2, 3])
     if isinstance(tranches_per_multi_raw, int):
         tranches_per_multi = [tranches_per_multi_raw]
@@ -331,10 +357,32 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
 
     total_posts = sum(len(d) for d in deals)
     log(f"Plan: {single} single + {multi} multi deals = {total_posts} POST(s). dry_run={dry_run}")
+    if email_mode != "off":
+        log(f"Email mode = {email_mode} (format={email_format or 'default'}, "
+            f"recipient={email_cfg.get('recipient') or 'UNSET'}).", "warn")
+
+    # ── Email-only fast path (no auth, no POST — one email per deal) ──────────
+    if email_mode == "email_only":
+        ok = err = 0
+        for deal_idx, payloads in enumerate(deals, start=1):
+            if stop_event.is_set():
+                log("Stopped.", "warn")
+                break
+            borrower = payloads[0]["DETAILS"].get("ISSUER_NAME", "?")
+            log(f"[D{deal_idx}] {borrower} — {len(payloads)} tranche(s)")
+            if emit_email(payloads, f"[D{deal_idx}]"):
+                ok += 1
+            else:
+                err += 1
+        log(f"Done — Emails sent={ok}  failed={err}  deals={len(deals)}",
+            "success" if err == 0 else "warn")
+        log_queue.put({"type": "summary", "success": ok, "failed": err,
+                       "total": ok + err})
+        return
 
     # ── Auth ─────────────────────────────────────────────────────────────────
     token = None
-    if not dry_run:
+    if do_post:
         log(f"Authenticating as {username} ...")
         try:
             token = _login(host, username, password, verify_ssl)
@@ -428,6 +476,9 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
                 else:
                     log(f"Tranche 1 returned {status}; skipping remaining tranches.", "error")
                     break
+
+        if email_mode == "both" and not stop_event.is_set():
+            emit_email(payloads, f"[D{deal_idx}]")
 
     log(f"Done — ACK={counts.get('ACK',0)}  NACK={counts.get('NACK',0)}  "
         f"HTTP_ERROR={counts.get('HTTP_ERROR',0)}  DRY_RUN={counts.get('DRY_RUN',0)}",

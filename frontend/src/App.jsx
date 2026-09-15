@@ -2,19 +2,25 @@ import { useState, useEffect, useRef } from 'react'
 import Header from './components/Header.jsx'
 import BondsTab from './tabs/BondsTab.jsx'
 import LoansTab from './tabs/LoansTab.jsx'
+import SecuritizedTab from './tabs/SecuritizedTab.jsx'
+import MunisTab from './tabs/MunisTab.jsx'
 import InterestTab from './tabs/InterestTab.jsx'
 import HistoryTab from './tabs/HistoryTab.jsx'
 import SettingsTab from './tabs/SettingsTab.jsx'
 import CsvUploadTab from './tabs/CsvUploadTab.jsx'
 import TigOrdersTab from './tabs/TigOrdersTab.jsx'
+import EmailCompareTab from './tabs/EmailCompareTab.jsx'
 import { getConfig, saveConfig } from './api.js'
 
 const TABS = [
   { id: 'bonds',      label: 'Bonds' },
   { id: 'loans',      label: 'Loans' },
+  { id: 'securitized', label: 'Securitized' },
+  { id: 'munis',      label: 'Munis' },
   { id: 'interest',   label: 'Interest Capture' },
   { id: 'tig_orders', label: 'TIG Orders' },
   { id: 'csv_upload', label: 'CSV Upload' },
+  { id: 'compare',    label: 'Email Compare' },
   { id: 'history',    label: 'History' },
   { id: 'settings',   label: 'Settings' },
 ]
@@ -25,7 +31,6 @@ export default function App() {
   const [pendingRun, setPendingRun] = useState(null) // { tool, params } for re-run prefill
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
-
   useEffect(() => {
     getConfig().then(setConfig).catch(console.error)
   }, [])
@@ -95,6 +100,12 @@ export default function App() {
         {activeTab === 'loans' && (
           <LoansTab {...tabProps} prefill={prefillFor('loans')} onPrefillConsumed={consumePrefill} />
         )}
+        {activeTab === 'securitized' && (
+          <SecuritizedTab {...tabProps} prefill={prefillFor('securitized')} onPrefillConsumed={consumePrefill} />
+        )}
+        {activeTab === 'munis' && (
+          <MunisTab {...tabProps} prefill={prefillFor('munis')} onPrefillConsumed={consumePrefill} />
+        )}
         {activeTab === 'interest' && (
           <InterestTab {...tabProps} prefill={prefillFor('interest')} onPrefillConsumed={consumePrefill} />
         )}
@@ -103,6 +114,9 @@ export default function App() {
         )}
         {activeTab === 'csv_upload' && (
           <CsvUploadTab {...tabProps} prefill={prefillFor('csv_upload')} onPrefillConsumed={consumePrefill} />
+        )}
+        {activeTab === 'compare' && (
+          <EmailCompareTab activeEnvName={activeEnvName} />
         )}
         {activeTab === 'history' && (
           <HistoryTab onRerun={rerunFromHistory} />

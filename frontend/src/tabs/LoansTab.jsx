@@ -25,12 +25,15 @@ export default function LoansTab({ config, activeEnvName, prefill, onPrefillCons
   const [dealQueryWait, setDealQueryWait] = useState(pf.deal_query_wait ?? ls.deal_query_wait ?? defaults.deal_query_wait ?? 6)
   const [currency, setCurrency] = useState(pf.currency ?? ls.currency ?? '')
   const [dryRun, setDryRun] = useState(pf.dry_run ?? ls.dry_run ?? false)
+  const [emailOn, setEmailOn] = useState(pf.email_on ?? ls.email_on ?? false)
+  const [emailOnly, setEmailOnly] = useState(pf.email_only ?? ls.email_only ?? false)
+  const [emailFormat, setEmailFormat] = useState(pf.email_format ?? ls.email_format ?? 'loan_jpm')
 
   useEffect(() => { if (prefill) onPrefillConsumed?.() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify({ single, multi, tranches, delay, deal_query_wait: dealQueryWait, currency, dry_run: dryRun })) } catch {}
-  }, [single, multi, tranches, delay, dealQueryWait, currency, dryRun])
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ single, multi, tranches, delay, deal_query_wait: dealQueryWait, currency, dry_run: dryRun, email_on: emailOn, email_only: emailOnly, email_format: emailFormat })) } catch {}
+  }, [single, multi, tranches, delay, dealQueryWait, currency, dryRun, emailOn, emailOnly, emailFormat])
 
   const paramsRef = useRef(null)
   const envRef = useRef(activeEnvName)
@@ -62,6 +65,10 @@ export default function LoansTab({ config, activeEnvName, prefill, onPrefillCons
       deal_query_wait: Number(dealQueryWait),
       currency: currency.trim().toUpperCase() || null,
       dry_run: dryRun,
+      email_on: emailOn,
+      email_only: emailOnly,
+      email_mode: emailOn ? (emailOnly ? 'email_only' : 'both') : 'off',
+      email_format: emailFormat,
       ref_dir: refDirs.loans || '',
     }
   }
@@ -128,6 +135,38 @@ export default function LoansTab({ config, activeEnvName, prefill, onPrefillCons
               <span className="toggle-slider" />
             </label>
           </div>
+
+          <div className="toggle-row">
+            <label>Email — generate broker email &amp; send to Settings recipient</label>
+            <label className="toggle">
+              <input type="checkbox" checked={emailOn}
+                onChange={e => setEmailOn(e.target.checked)} />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+
+          {emailOn && (
+            <>
+              <div className="toggle-row">
+                <label>Email only — no API POST (just send the email)</label>
+                <label className="toggle">
+                  <input type="checkbox" checked={emailOnly}
+                    onChange={e => setEmailOnly(e.target.checked)} />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+              <div className="field">
+                <label>Email format</label>
+                <select value={emailFormat} onChange={e => setEmailFormat(e.target.value)}>
+                  <option value="loan_jpm">JPM Loan Launch (COMPANY/BORROWER/BUSINESS/UOP)</option>
+                  <option value="loan_barclays">Barclays Lead Left / Calendar (+ Commitments Due)</option>
+                  <option value="loan_citi">Citi Loan (Borrower/Facility)</option>
+                  <option value="loan_rbc">RBC Debut TLB (narrative + Business/Sponsor)</option>
+                </select>
+                <div className="field-hint">Recipient is set in Settings → Email. Sends via Outlook Classic.</div>
+              </div>
+            </>
+          )}
 
           <div className="btn-row">
             <button className="btn btn-primary" disabled={running} onClick={run}>▶ Run</button>

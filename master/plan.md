@@ -153,6 +153,53 @@ All four run-parameter tabs (Bonds, Loans, Interest, CSV Upload) save their fiel
 
 The History ↻ action switches to the tool's tab and prefills the stored params but does **not** start the run — re-running posts real test data, so the user must click Run deliberately. (The prototype auto-fired.)
 
+### Broker-email generation via Outlook COM (added 2026-07-21)
+
+Bonds & Loans can render each generated deal as a broker-style email and send it to a Settings-configured recipient, to feed the Genesis email-parsing POC (see spec §17). Decisions:
+
+- **Outlook Classic COM (`pywin32`) over SMTP.** The near-term workflow is "email lands in my inbox → I save the `.msg` and upload it", and there is no monitored mailbox yet. Sending through the user's logged-in Outlook profile needs no SMTP relay/allow-listing and produces a genuine Outlook message. COM is initialised per-thread since engines run on a background thread. Falls back to a skip-with-warning if Outlook/pywin32 is absent.
+- **Three modes threaded through `params`** (`email_mode` = `off`/`both`/`email_only`, plus `email_format`). No new endpoints or router logic — email config is injected server-side in `_shared.py` from the top-level `email` block, exactly like `ref_dir`. `email_only` skips auth and POST.
+- **Template library, one renderer per bank/desk format** (`email_builder.py`), because the POC samples vary widely by sender. Gap fields use fixed **boilerplate** and small **random pools** (per the user's choice). Multi-deal digest formats (bank calendars) are deferred.
+- One email per **deal** (multi-tranche deals produce one email covering all tranches).
+
+### Email comparison / LLM accuracy harness (specified 2026-08-06, not built)
+
+The utility becomes the **source of ground truth** for the email-parsing agent: when it generates an email (§17) it also writes the *expected* database state for that email into its own mirror tables, so the rows the agent actually produced can be diffed against it and scored. See spec §18. Decisions:
+
+- **Mirror the four app tables, keep the column names identical** — `util_issuance_deal`, `util_issuance_data`, `util_issuance`, `util_issuance_security`. Prefix (not a `_util` suffix) so they sort together, never match a `t_%` pattern used by app tooling, and diff column-for-column against `t_*` with no aliasing. Metadata rides in `util_`-prefixed extra columns (`util_run_id`, `util_source`, `util_match_key`, …).
+- **One set of tables, three lanes** — `util_source` ∈ `expected` (utility) / `baseline` (current pipeline, the diagram's top lane) / `actual` (agent). Every comparison is then a self-join, and any pair can be scored by the same code.
+> **Superseded 2026-08-07 (decision D9, spec §18.14).** The bullets below describe the design as
+> built across sessions S1–S8. On seeing the finished tab the user's verdict was *"the entire design
+> is a complete mess … I am not sure how to use it and it looks very complicated"*, and step 15 cuts
+> it back to expected-vs-actual with one accuracy figure and a four-word verdict set. **Removed:**
+> the baseline lane and three-way verdicts, the calibration / override / known-differences loop, LLM
+> run metadata and the cost leaderboard, the relational assertions, and seven of the eight scores.
+> What survives: capture, the field map, score-only-what-the-email-said, row matching, the
+> normalizers, the read-only DB fetch and CSV import. The bullets are kept because each records
+> *why* a piece existed, which is what makes it safe to delete — and because the failure is worth
+> remembering: every addition was individually defensible and individually agreed, and the total was
+> still unusable. An accuracy harness earns its complexity only when someone can read its output
+> without being taught it.
+
+- **All three lanes ship in v1.** The payoff is **three-way verdicts** — `AGENT_ERROR` (both references agree, the model is wrong) vs `CALIBRATION` (pipeline and agent agree, *our expectation* is wrong) vs `AGENT_BETTER`. Without the baseline every disagreement is an undifferentiated MISMATCH, and early on the wrong-expectation kind dominates, so the harness would read as model failure when it is really spec drift.
+- **Same ticker in every lane; `datasource_id` does the separating.** A ticker identifies the issuer, so email and API POST must carry the *same* one — different tickers would be different issuers and misbehave in the app. Lanes are told apart by `datasource_id` (`LLM` = agent, `BBG` = current pipeline; confirmed the app does not overwrite it). Unique-per-run tickers still apply: one fresh ticker per run, shared by both lanes, so repeat runs of an issuer don't contaminate each other.
+- **`t_issuance_data` is the scoring surface, by design.** Because it is append-only per update with a `datasource_id` on every row, both lanes stay attributable there even if the app associates the two ingests into one deal. That is not a compromise — it is the widest of the four tables and carries every field in the comparison map, so three-lane scoring and the whole calibration loop run on it with nothing omitted. `t_issuance` / `t_issuance_deal` / `t_issuance_security` hold current state and rollups, so a blended row belongs to neither lane; they are scored two-way from email-only runs, and blend detection restricts baseline scoring with a warning naming the excluded tables.
+- **Association / merge testing is backlog.** Email first, *then* a `BBG` POST for the same deal, to check the app associates rather than duplicates (`deal_closest_match`), is its own scenario: sequenced emission with a wait, per-column merge-precedence expectations, and its own assertions (one `deal_id`, tranche count didn't double, both audit rows retained). v1 neither tests nor prevents association — blend detection keeps it from contaminating the numbers.
+- **Calibration is a loop, not a report.** Each `CALIBRATION` finding is resolvable in the UI: *accept baseline* writes a reversible, audited override (`util_map_override`) so future expectations use the app's value, or *keep expectation* records a suspected app defect. The effective map = seed CSVs + active overrides, and re-scoring applies corrections to historical runs — so calibrating today improves yesterday's numbers instead of invalidating them.
+- **Actual rows come from a read-only DB query in v1** (credentials are available): `SELECT` by ticker + ingest window, lanes assigned by `datasource_id`, bound parameters only, statement timeout and row cap, no write path. CSV import stays as the offline/hand-off route.
+- **SQLite (`backend/expected/pbi_util.db`) as the system of record**, with an optional Postgres mirror. Capture needs no credentials and no network, so it works in `dry_run` / `email_only`, and the utility can never write to the environment under test. Actual rows come in either from a read-only Postgres connection or from a CSV upload in the same shape as the `Sample_issuance*.csv` exports.
+- **Schema is data, not code** — the four `information_schema` exports (`*_fields_size.csv`) ship as reference data and drive DDL generation, column-length validation of generated values, and the comparison surface. The payload→column mapping lives in `field_map.csv` (tier + normalizer per column), so ABS/Munis are added by authoring rows, not by editing Python.
+- **Score only what the email rendered.** Each renderer declares its rendered field set; the headline *extraction accuracy* is measured over that set, with a second *coverage accuracy* over everything the utility intended. The gap between them is a template bug, not a model failure.
+- **Never simplify the email to make the diff easier.** Where the email states prose and the app stores a code (use-of-proceeds classification, splitting `Baa2/Stable` into rating + outlook), the translation *is* the capability under test. The templates keep their prose and the **expectation** holds the post-normalization value, with `vocab_map.csv` as the generated-text → expected-DB-value authority. (Decision D3 — reverses an earlier "restrict the pools" recommendation.)
+- **Email-ingested rows are stamped `LLM`** — `datasource_id` / `deal_id_datasource` / `issuance_created_by`, which also filters match candidates.
+- **Business-key row matching** (ISIN/CUSIP → ticker+currency+tenor → ticker+maturity+size), because the agent's rows carry app-assigned ids. A new "unique ticker per run" option on the Bonds tab makes this unambiguous.
+- **`expected_writer.py` and `comparators.py` are pure** (no I/O), mirroring `email_builder.py`, so both are testable in dry run. Capture failures are logged as warnings and never fail a run.
+- **LLM run metadata is first-class** (`util_llm_run`: provider / model / prompt version / method / tokens / cost / latency), entered manually or imported, so accuracy can be ranked against cost and latency across configurations.
+
+- **Built across fresh chats, with the repo as the only shared state.** 11 steps grouped into 7 sessions (§18.16). Each build chat reads the spec, builds only its named steps, verifies them, flips the status rows, adds an `implementation.md` entry, and emits a completion report ending with a self-contained hand-off prompt for the next session (§18.17). Nothing relies on chat history, so a session can be re-run or picked up cold. Deviations must be written back into §18 in the same session — an unrecorded deviation silently breaks every later session that trusted the spec.
+
+Build order, per-step definition of done, and decisions: spec §18.16, §18.17 and §18.14.
+
 ### Env switch persists (added 2026-06-22)
 
 Switching environment in the header now writes `active` back to `environments.json` (`PUT /api/config`), so the selection survives a reload — previously it was local React state only.
@@ -202,14 +249,24 @@ C:\python\PBI_Test_Utility\
 │   ├── config_manager.py
 │   ├── run_manager.py
 │   ├── history_manager.py     ← run-history JSON store (add/list + retention)
+│   ├── expected_store.py      ← util_* mirror tables (SQLite) — DDL/insert/export (added 2026-08-06)
+│   ├── comparators.py         ← [planned §18] normalizers, row matching, scoring, assertions
+│   ├── db_reader.py           ← [planned §18] read-only Postgres fetch of the four app tables
 │   ├── environments.json
 │   ├── history.json           ← persisted run records (created on first run)
 │   ├── requirements.txt
+│   ├── expected\              ← pbi_util.db (created on first capture)
+│   ├── reference\
+│   │   ├── bonds\ · loans\
+│   │   └── db_schema\             ← *_fields_size.csv + field_map.csv + vocab_map.csv (added 2026-08-06)
 │   ├── engines\
 │   │   ├── bonds_engine.py
 │   │   ├── loans_engine.py
 │   │   ├── interest_engine.py
 │   │   ├── csv_engine.py          ← CSV/Excel → JSON publisher (added 2026-06-26)
+│   │   ├── email_builder.py       ← broker-email HTML renderers + boilerplate/random pools (added 2026-07-21)
+│   │   ├── outlook_sender.py      ← Outlook COM send / .msg save (added 2026-07-21)
+│   │   ├── expected_writer.py     ← [planned §18] payload → expected table rows (pure)
 │   │   └── loan_utils\
 │   │       ├── cusip.py
 │   │       └── dates.py
@@ -220,6 +277,7 @@ C:\python\PBI_Test_Utility\
 │       ├── interest.py
 │       ├── csv_upload.py          ← multipart upload endpoint (added 2026-06-26)
 │       ├── config_router.py
+│       ├── compare_router.py      ← [planned §18] /api/compare
 │       └── history_router.py      ← GET / POST /api/history
 ├── frontend\
 │   ├── index.html
@@ -241,6 +299,7 @@ C:\python\PBI_Test_Utility\
 │           ├── LoansTab.jsx
 │           ├── InterestTab.jsx
 │           ├── CsvUploadTab.jsx   ← CSV Upload tab (added 2026-06-26)
+│           ├── EmailCompareTab.jsx ← [planned §18] Email Compare tab (Bonds · Loans · ABS · Munis)
 │           ├── HistoryTab.jsx
 │           └── SettingsTab.jsx
 └── (root launch scripts listed at top)
