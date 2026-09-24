@@ -2,8 +2,17 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-ENVIRONMENTS_PATH = Path(__file__).parent / "environments.json"
-BACKEND_DIR = str(Path(__file__).parent)
+from paths import BACKEND_DIR as _BACKEND_DIR, STATE_DIR
+
+# Settings are written at runtime (Settings tab), so they live in the state dir.
+# environments.json itself is NOT in git — it holds credentials, and a tracked copy
+# means every developer conflicts with every other one on the file they must edit to
+# run anything. What is tracked is environments.example.json (no passwords, and a
+# ready-made "Local" entry). First start seeds from whichever of these exists.
+ENVIRONMENTS_PATH = STATE_DIR / "environments.json"
+SEEDS = (_BACKEND_DIR / "environments.json",          # a local, untracked copy
+         _BACKEND_DIR / "environments.example.json")  # the tracked template
+BACKEND_DIR = str(_BACKEND_DIR)
 
 
 def _resolve(data: Any) -> Any:
@@ -19,7 +28,10 @@ def _resolve(data: Any) -> Any:
 
 def load_environments() -> Dict[str, Any]:
     if not ENVIRONMENTS_PATH.exists():
-        return _resolve(_defaults())
+        seed = next((s for s in SEEDS if s.exists() and s != ENVIRONMENTS_PATH), None)
+        if seed is None:
+            return _resolve(_defaults())
+        ENVIRONMENTS_PATH.write_bytes(seed.read_bytes())
     with ENVIRONMENTS_PATH.open("r", encoding="utf-8") as f:
         return _resolve(json.load(f))
 

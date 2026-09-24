@@ -53,6 +53,7 @@ import requests
 
 from engines.abs_utils import dates as D
 from engines.abs_utils.identifiers import IdentifierPool, cusip as make_cusip, isin_144a, isin_regs_us
+from engines.url_utils import join_url
 
 # ── constants ──────────────────────────────────────────────────────────────────
 
@@ -1169,7 +1170,7 @@ def check_payload(payload: Dict[str, Any]) -> Dict[str, List[str]]:
 # ── HTTP (identical to Loans — §20.2) ──────────────────────────────────────────
 
 def _login(host: str, username: str, password: str, verify_ssl: bool) -> str:
-    auth_url = f"https://{host}/sm/event-login-auth"
+    auth_url = join_url(host, "/sm/event-login-auth")
     body = {"MESSAGE_TYPE": "TXN_LOGIN_AUTH", "SERVICE_NAME": "AUTH_MANAGER",
             "DETAILS": {"USER_NAME": username, "PASSWORD": password}}
     headers = {"Content-Type": "application/json", "SOURCE_REF": "12345",
@@ -1303,7 +1304,8 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
 
     log(f"Plan: {deals} deals = {deals} POST(s). dry_run={dry_run}")
 
-    publish_url = f"https://{host}/gwf//{MESSAGE_TYPE}"
+    # Built only when it will be used: a dry run must work with no host configured.
+    publish_url = join_url(host, f"/gwf//{MESSAGE_TYPE}") if not dry_run else ""
     counts_by_status = {"ACK": 0, "NACK": 0, "HTTP_ERROR": 0, "DRY_RUN": 0, "INVALID": 0}
 
     token = None

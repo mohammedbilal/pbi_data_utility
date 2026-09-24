@@ -2711,3 +2711,254 @@ updated to `Fixed | Float | Prelim` for accuracy; it is documentation, not an en
 - **Pre-existing failure, not introduced here:** `tests/test_abs_slice2.py` raises
   `KeyError: 'ASSET_TYPE'` at line 434. `ASSET_TYPE` stopped being emitted on the ABS Series in the
   2026-09-09 deal-type change; the test was not updated with it.
+
+---
+
+## Changes — 2026-09-24 — Docker: one image, one port, cross-platform
+
+The app was Windows-only by *launcher*, not by architecture: the four `.vbs`/`.bat`/`.ps1`
+scripts, the absolute `C:\python\...` paths in `environments.json`, and one genuinely
+Windows-only feature (Outlook COM). Containerising it meant fixing the first two and
+accepting the third.
+
+### What was built
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Two stages: `node:20-alpine` runs `npm ci && npm run build`; `python:3.12-slim` installs `requirements.txt`, copies `backend/` + the built `dist/`, runs `uvicorn main:app` from `WORKDIR /app/backend`. |
+| `docker-compose.yml` | Port `8000:8000`, `./data:/app/data`, `TZ` passthrough, `restart: unless-stopped`. |
+| `.dockerignore` | Excludes `.venv`, `node_modules`, `graphify-out/`, `master/`, the Windows launchers, and runtime state. |
+| `backend/paths.py` | New, 8 lines. `STATE_DIR = $PBI_STATE_DIR or BACKEND_DIR`. |
+| `data/.gitkeep` | Bind-mount target, so the host path exists before Docker can turn it into a directory. |
+
+### The three things that actually had to change
+
+**1. Single-port mode.** The Windows flow needs Vite for hot reload; a container does not.
+`main.py` now mounts `frontend/dist` at `/` with `StaticFiles(html=True)`, *after* the routers
+so `/api/...` still wins, and *conditionally* on the directory existing so the Windows flow is
+untouched. That removes the `:5173` process and the `/api` dev proxy — SSE now goes straight
+from FastAPI to the browser with nothing in between.
+
+**2. A state directory.** Three modules wrote next to their own source file
+(`config_manager` → `environments.json`, `history_manager` → `history.json`, `expected_store`
+→ `expected/pbi_util.db`), which in a container means settings and captures die with the
+container. All three now resolve through `paths.STATE_DIR`, which **defaults to the backend
+folder** — so with `PBI_STATE_DIR` unset, every path is byte-identical to before. Settings are
+*seeded*: `load_environments()` copies the bundled `backend/environments.json` into the state
+dir if absent, which also means `backend/environments.json` stays the checked-in seed and the
+state dir holds the user's edits.
+
+**3. `reference_dirs` stopped being absolute.** They pointed at
+`C:\python\PBI_Test_Utility\backend\reference\*`. The `{BACKEND_DIR}` placeholder that
+`config_manager._resolve` has always supported was already the right answer — they now use it,
+which fixes the container, a relocated checkout, and `_defaults()` (which still pointed at the
+two *pre-unification* script folders, `LATEST_PBI_JSON` and `PBI_LOAN_JSON_PUBLISHER_V1`).
+
+### The one feature that does not survive
+
+`engines/outlook_sender.py` is Windows COM (`pythoncom` + `win32com.client`) and needs a local
+Outlook Classic profile. In the container `send_via_outlook` raises `OutlookUnavailable`, which
+`bonds_engine` and `loans_engine` **already** catch as a `warn` (`✉ Email skipped`). Per §18
+the expectation is captured regardless of send status, so email generation, expectation
+capture, `.msg` upload (`extract-msg` is pure Python) and the whole Email Compare surface are
+unaffected — only "send it to my inbox" is. No code change was needed for this; the existing
+degradation path is exactly right. `pywin32` carries a `sys_platform == "win32"` marker, so
+`pip install` skips it on Linux without editing `requirements.txt`.
+
+### Validation
+
+Docker is **not installed on the dev machine**, so the image itself was not built or run. What
+was verified, natively, is the arrangement the container uses:
+
+- Backend imports clean with `PBI_STATE_DIR` unset — `environments.json`, `history.json` and
+  the store resolve to their historical Windows paths exactly.
+- With `PBI_STATE_DIR` set to a fresh temp dir: settings seeded from the bundle (`active` read
+  back as `TRP - QA2`), history and store relocated under it.
+- `npm run build` clean (47 modules). Serving that `dist` from uvicorn alone, with no Vite and
+  no proxy: `/api/health` 200, `/` 200 `text/html`, `/assets/index-*.js` 200 `text/javascript`
+  245 KB, `/api/config` and `/api/history` 200.
+- Bonds dry-run against the `{BACKEND_DIR}`-resolved reference dir: 11,105 issuers loaded,
+  1/1 success.
+
+**Not verified:** `docker build` / `docker compose up`, and therefore the wheel availability
+for `psycopg[binary]`, `pandas` and `numpy` on `linux/arm64` (Apple Silicon) — expected to be
+fine, all three publish aarch64 manylinux wheels, but it is unconfirmed on this machine.
+
+
+---
+
+## Changes — 2026-09-24 (later) — macOS launchers
+
+Docker gave macOS a *working* app but not a *double-clickable* one, which is how this tool is
+actually used. `.command` files are the Finder-runnable equivalent of `.vbs`, so the Windows
+trio was ported directly.
+
+| New | Replaces |
+|---|---|
+| `Launch.command` | `Setup.bat` + `Launch.vbs` + `Start-App.ps1` |
+| `Stop.command` | `Stop-App.vbs` |
+| `.gitattributes` | — (new; line-ending rules) |
+
+**Setup was folded into launch, on purpose.** Windows splits them because `Setup.bat` is slow and
+`Launch.vbs` is deliberately silent — there is nowhere to show progress. A `.command` file runs in
+a *visible* Terminal, so the first launch can create the venv, `pip install` and `npm install` with
+the output on screen and then start. The guard is `backend/.venv/bin/uvicorn` being executable and
+`frontend/node_modules` existing, so later launches cost nothing. Two scripts instead of three.
+
+**Everything §12.1–12.2 guards against has a macOS analogue, and all of them are real:**
+
+- *PATH* — a Finder-launched script gets no shell profile, so Homebrew (`/opt/homebrew/bin` on
+  Apple Silicon, `/usr/local/bin` on Intel) can be missing entirely. Exactly the stale-registry-PATH
+  failure `Start-App.ps1` fixes; prepending both is the fix here.
+- *IPv6* — solved for free by probing `http://localhost:PORT` with `curl` rather than a raw socket.
+  `localhost` resolves to both families, so Vite on `::1` and uvicorn on `127.0.0.1` both answer
+  without the explicit dual-address loop `Test-Port` needs.
+- *Speed* — `node node_modules/vite/bin/vite.js` direct, `npm run dev` as fallback; both ports
+  polled together at 150ms, 45s budget.
+- *Errors* — `osascript -e 'display dialog'` stands in for the WinForms `MessageBox`.
+
+**Two git-level traps, both of which would have shipped a broken file:**
+
+1. `core.autocrlf=true` on this machine. A CRLF `.command` fails on macOS with
+   `bad interpreter: /bin/bash^M` — a genuinely confusing error. `.gitattributes` now pins
+   `*.command`/`*.sh`/`Dockerfile` to `eol=lf` (and the Windows launchers to `eol=crlf`, which was
+   previously only working by accident of autocrlf).
+2. `core.filemode=false` on this machine, so `chmod +x` in the working tree is not recorded.
+   Without the exec bit **Finder opens the script in TextEdit instead of running it** — the whole
+   feature, silently dead. Both files are staged at mode `100755` via
+   `git update-index --chmod=+x`; `git ls-files -s` confirms it.
+
+Stop reads `.logs/{backend,frontend}.pid`, then falls back to `lsof -ti tcp:PORT` so a hand-started
+server is cleaned up too. `.logs/` is git-ignored and is where launch-timeout diagnosis starts.
+
+### Validation
+
+**No Mac was available, so neither script has been run end-to-end.** What was checked:
+
+- `bash -n` clean on both; `file` reports both as LF (`Bourne-Again shell script … executable`),
+  and `git show :Launch.command | grep -c $''` returns 0 — the bytes *in the index* are LF, which
+  is what a Mac checkout receives.
+- `git ls-files -s` reports `100755` for both.
+- The readiness probe was exercised against a real uvicorn on Windows: correctly reports DOWN with
+  nothing listening on the port, and the poll loop detected the server after **2 iterations
+  (~0.3s)** — the same order as the Windows launcher's ~1.5–2s total.
+
+**Not verified:** Finder double-click behaviour, `open`, `osascript`, `lsof`, the Homebrew PATH
+branch, and the first-run venv/npm install on macOS. These are standard macOS facilities used in
+standard ways, but that is reasoning, not evidence.
+
+---
+
+## Changes — 2026-09-24 (later still) — developer-local setup: scheme, secrets, reload
+
+Three changes aimed at one complaint: *"right now they have to make a lot of changes to links and
+tweak things to make it work — e.g. remove the 's' from https when using localhost."*
+
+### 1. `host_name` carries the scheme
+
+**Diagnosis first, because the obvious fix was the wrong one.** The suggestion on the table was to
+move the links into a separate config file. But the hosts were *already* in a config file
+(`environments.json`, editable from Settings) — the scheme was hardcoded in the engines, so no
+amount of moving the host value would have changed it. `grep -rc 'f"https://'` over
+`backend/engines/`: bonds 2, csv 2, loans 3, munis 2, securitized 2, tig 2, interest 1.
+
+Thirteen of those fourteen were `f"https://{host}"`. The fourteenth was the **correct default
+inside `interest_engine._normalize_host`**, which had honoured a scheme in `host_name` since it was
+written — Interest Capture could already point at localhost; the other six could not. So the fix
+was not to invent a mechanism but to promote the one already in the repo: that function moved to
+`engines/url_utils.py` as `normalize_host` / `join_url`, `interest_engine` now aliases it
+(`_normalize_host = normalize_host`) so its five call sites are untouched, and the other six
+engines call `join_url`.
+
+**A regression this surfaced, and it is the interesting part.** `normalize_host` raises
+`ValueError` on an empty host — good behaviour, it turns a Settings typo into a clear message. But
+five engines built their publish URL *before* the dry-run branch, where the old
+`f"https://{host}"` produced harmless garbage (`https:///gwf//EVENT_X`) that was never used.
+With a real function there, `tests/test_munis.py` went from 102 payloads to **0**, every one
+failing `Fatal error: host_name is empty`. A dry run must work with **no environment at all** —
+that is its contract. Fixed by building those URLs only on the path that uses them, e.g.
+`publish_url = join_url(host, f"/gwf//{MESSAGE_TYPE}") if not dry_run else ""`, in `bonds`,
+`loans`, `securitized`, `munis` and `tig`. `csv_engine` already built its URL inside
+`if not dry_run:` and needed nothing.
+
+`join_url` passes the path through **as written** — `/gwf//EVENT_X` keeps its doubled slash,
+because the server accepts it and every live run to date depends on it. Bonds and CSV Upload still
+wrap the result in their own `_normalize_url`, which collapses it. That asymmetry is deliberate.
+
+### 2. `environments.json` left git; `environments.example.json` joined it
+
+The file holds credentials and is the one file every developer must edit, so tracking it
+guaranteed both secret churn and a permanent merge conflict. Now:
+
+- `backend/environments.example.json` is **tracked** — every password blanked, a `Local` entry
+  (`http://localhost:8080`, `verify_ssl: false`) prepended, and `active` set to it.
+- `backend/environments.json` is **git-ignored** (`git rm --cached`, working copy untouched).
+- `config_manager.SEEDS` seeds on first start from an existing local copy, else the example, else
+  `_defaults()`.
+- `.dockerignore` excludes the real file, so the image no longer bakes credentials into a layer —
+  this retires the caveat raised in the Docker entry above.
+
+`_defaults()` was also corrected: its `reference_dirs` still pointed at the two *pre-unification*
+script folders (`LATEST_PBI_JSON`, `PBI_LOAN_JSON_PUBLISHER_V1`).
+
+### 3. Hot reload
+
+The frontend already had it — Vite HMR, on by default in `npm run dev`, since day one. Nothing to
+build; the question in the brief ("is there a tool like that for frontend as well?") was already
+answered by the stack.
+
+The backend now launches with `uvicorn --reload` from both `Start-App.ps1` and `Launch.command`,
+with `PBI_NO_RELOAD=1` to opt out. No new dependency — `watchfiles` ships inside the
+`uvicorn[standard]` already in `requirements.txt`.
+
+**Making it the default needed one thing checked first.** The backend writes `environments.json`
+on every Settings save, `history.json` on every completed run, and `expected/pbi_util.db` on every
+capture. If those triggered a restart, the app would bounce itself mid-run. Read from the installed
+uvicorn (`supervisors/watchfilesreload.py`, `default_includes = ["*.py"]`) and confirmed: `.py`
+files reload, while `environments.json`, `history.json` and `expected/pbi_util.db` do not.
+
+`docker-compose.dev.yml` adds the same for containers. The frontend is deliberately *not*
+hot-reloaded there: the runtime image is `python:3.12-slim` with no node, so there is no Vite to
+run. A first draft of that file claimed otherwise in its header comment while contradicting itself
+four lines later; it was rewritten to say plainly that frontend work happens on the host.
+
+### Validation
+
+- **Live proof of the whole point.** A stub `http.server` on `127.0.0.1:8080`, `host_name` set to
+  `http://localhost:8080`, bonds run **not** in dry-run: requests received
+  `['/sm/event-login-auth', '/gwf/event_new_issuance_data']`, engine logged `Authenticated.` then
+  `OK 200`. Plain HTTP, local host, **zero code edits** — previously impossible without editing 13
+  lines of Python.
+- **Fresh-clone simulation** (copy of `backend/` with `environments.json` deleted): seeded from the
+  example, `active='Local'`, `host_name='http://localhost:8080'`, `verify_ssl=False`, auth URL
+  `http://localhost:8080/sm/event-login-auth`. No edits required to start.
+- **Dry-run matrix**, 4 engines x {blank host, `http://localhost:8080`} = 8 runs, all
+  `success=1 failed=0`, zero error logs. The blank-host column is the regression guard.
+- `normalize_host` unit cases: bare host to https; `http://` and `https://` preserved with port;
+  `localhost:8080` to https (documented); empty, whitespace and `ftp://x` raise `ValueError`.
+- Test scripts: `test_abs_slice1` 224, `test_email_ingest` 148, `test_label_form` 125,
+  `test_upload_flow` 106, `test_munis` 102 — all pass, same counts as before the refactor.
+  `test_abs_slice2` still fails at line 434 on `KeyError: 'ASSET_TYPE'`, unchanged and pre-existing.
+
+### Documentation
+
+`spec.md` gained §4.1.1 (scheme), §4.2.1 (untracked settings + seeding chain) and §12.5 (hot
+reload), and its §4.2 reference-dirs table was corrected from the two dead script paths to the four
+`{BACKEND_DIR}` ones.
+
+`plan.md` was the stale one — it still described a three-tool app. Its architecture diagram,
+Phase 4, decisions and **whole file map** were rebuilt: Securitized, Munis, TIG Orders, Email
+Compare, the Docker and macOS launchers, `paths.py`, `url_utils.py` and `environments.example.json`
+were all absent. Two decisions that had become false were amended in place rather than deleted
+("No `.env` file", "Reference data stays in original locations"), since the reasoning is still
+worth reading. A new decision records the ABS/Munis tree-shape contrast and the issuer-dependence
+rule that organises the Munis reference data.
+
+**One discrepancy found and recorded, not fixed:** CLAUDE.md describes
+`components/compare/{CalibrationPanel,OverridesPanel,KnownDifferencesPanel}.jsx` and
+`components/compare/shared.js`. **None exist, and nothing imports them** — `EmailCompareTab.jsx`
+imports exactly one component, `../components/LabelForm.jsx`, and a repo-wide grep finds no
+reference to those names anywhere in the tree. This is consistent with decision **D9**
+(2026-08-07), which cut the calibration / override / known-differences loop; the CLAUDE.md prose
+describing it was never rolled back. Noted in `plan.md`'s file map. Whether the right fix is to
+delete that prose or to rebuild the panels is a product decision, so it is left open.

@@ -1,0 +1,11 @@
+# The macOS launchers must keep LF endings. This repo is developed on Windows with
+# core.autocrlf=true; a CRLF checkout makes macOS fail with the useless error
+# "bad interpreter: /bin/bash^M".
+*.command text eol=lf
+*.sh      text eol=lf
+Dockerfile text eol=lf
+
+# Windows launchers, conversely, want CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.vbs text eol=crlf

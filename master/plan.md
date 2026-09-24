@@ -16,7 +16,8 @@
 │  Browser (React / Vite)                                     │
 │                                                             │
 │  Header [logo · env dropdown · host badge]                  │
-│  Tabs: Bonds | Loans | Interest | CSV Upload | History | Settings │
+│  Tabs: Bonds | Loans | Securitized | Munis | Interest |     │
+│        TIG Orders | CSV Upload | Email Compare | History | Settings │
 │                                                             │
 │  Run tabs:                                                  │
 │    Left — parameter form + Run/Stop buttons                 │
@@ -32,15 +33,21 @@
 │  /api/bonds/run           POST → starts bonds engine thread  │
 │  /api/bonds/stream/:id    GET  → SSE log stream              │
 │  /api/bonds/stop/:id      POST → signals stop event          │
-│  (same pattern for /api/loans, /api/interest, /api/csv_upload)│
+│  (same pattern for /api/loans, /api/securitized, /api/munis, │
+│   /api/interest, /api/tig_orders, /api/csv_upload)           │
 │  /api/csv_upload/run      POST (multipart) → file + params   │
 │  /api/history             GET / POST  history.json           │
+│  /api/compare/**          REST (no SSE) — scoring, calibration│
 │                                                             │
 │  engines/                                                   │
 │    bonds_engine.py    (adapted deal_poster_url_auth_v3.py)  │
 │    loans_engine.py    (adapted loan multi-module project)   │
+│    securitized_engine.py (ABS — four-level tree, spec §20)  │
+│    munis_engine.py    (Munis — spec §21)                    │
 │    interest_engine.py (adapted capture_interest.py)         │
+│    tig_engine.py      (TIG orders)                          │
 │    csv_engine.py      (adapted csv_to_json_publisher_V4.py) │
+│    url_utils.py       (host_name → URL, one place)          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -109,6 +116,14 @@ The original `start_backend.bat` / `start_frontend.bat` pair was replaced by a n
 - `Start-App.ps1` — starts uvicorn + Vite hidden, waits for both ports, opens the browser (see spec §12.1 for PATH/npm/IPv6 robustness guards)
 - `Stop-App.vbs` — double-click to stop both servers
 
+**macOS (added 2026-09-24)** — `Launch.command` / `Stop.command`, run by Finder in Terminal.
+`Launch.command` is `Setup.bat` + `Launch.vbs` + `Start-App.ps1` in one file: a `.command`
+window is visible, so first-run setup can show its progress and then launch. See spec §12.3.
+
+**Docker (added 2026-09-24)** — `Dockerfile` + `docker-compose.yml`, one image and one port:
+the frontend is built at image-build time and served by FastAPI, so there is no Vite and no
+`/api` proxy. `docker-compose.dev.yml` adds backend `--reload`. See spec §12.4.
+
 ---
 
 ## Key Design Decisions
@@ -120,6 +135,11 @@ Bonds and loans authenticate as `RahulK`; interest capture authenticates as `TRP
 ### No `.env` file
 
 The loans project originally used a `.env` file for secrets. The new utility stores everything in `environments.json` and exposes it through the Settings tab UI. This makes environment switching a one-click action rather than editing hidden files.
+
+**Amended 2026-09-24:** still no `.env`, but `environments.json` is no longer *tracked*. It holds
+credentials and is the one file everyone must edit, so a tracked copy meant secret churn plus a
+permanent merge conflict. `environments.example.json` is tracked instead and seeds the real file
+on first start. See spec §4.2.1.
 
 ### SSE over WebSockets
 
@@ -140,6 +160,11 @@ All backend files use absolute imports (e.g. `from engines.bonds_engine import r
 ### Reference data stays in original locations
 
 The bonds and loans reference CSV files remain in their original directories. The paths are configurable in the Settings tab. No data migration required.
+
+**Superseded.** All four asset classes now ship their reference CSVs inside the repo at
+`backend/reference/{bonds,loans,securitized,munis}/`, and the paths use the `{BACKEND_DIR}`
+placeholder rather than absolute `C:\python\...` (2026-09-24), so one config file is correct on
+every platform. The Settings tab still exposes them.
 
 ### Run history persisted server-side (added 2026-06-22)
 
@@ -200,6 +225,59 @@ The utility becomes the **source of ground truth** for the email-parsing agent: 
 
 Build order, per-step definition of done, and decisions: spec §18.16, §18.17 and §18.14.
 
+### Securitized (ABS) and Munis as the third and fourth asset classes (added 2026-08-13 / 2026-09-15)
+
+Both are tree payloads posted as **one request per deal**, so neither needs the linkage query the
+Loans multi-tranche flow does — but they are trees of different kinds, and the difference is the
+design decision worth recording:
+
+- **ABS** (spec §20) is `DETAILS → SERIES{} → TRANCHES{} → SECURITIES{}` with children as **maps
+  keyed by `TEMP-<Level>-<n>`**, every child repeating its ancestors' ids. Its schema is **closed**
+  (`additionalProperties: false`), which makes a wrong field name a hard NACK naming the property —
+  turning the server into a field-name oracle. Sizes, credit enhancement, net proceeds and ratings
+  are **derived, not randomised** (§20.6). Deal identity is `DEAL_TYPE`, not asset type (2026-09-09).
+- **Munis** (spec §21) is `DETAILS → SERIES[] → TRANCHES[] → SECURITIES[]` — plain **arrays, no id
+  fields at all**, and a `TRANCHE` is a *maturity on a serial ladder*, not a credit class. Its
+  envelope differs too: `SESSION_AUTH_TOKEN` and a per-deal UUID `SOURCE_REF` go in the **body**.
+
+The decision that shaped Munis most: **its reference data was derived by analysing data, not by
+transcribing a drop-down.** The platform lookup defines only 4 vocabularies; everything else comes
+from `master/MUNIS_DATA.csv` (95 deals / 237 series / 2,142 maturities), and every rule in §21.6
+carries the count that establishes it. The organising rule is **issuer-dependence** — state,
+sector, purpose, tax status, ratings, repayment source, enhancement and typical size are one
+`issuers.csv` row, drawn **once per deal** and then read off, never re-drawn. Drawing those fields
+independently is precisely the failure mode the tool exists to avoid.
+
+Both ship a checked-in, seeded `_generate.py` that rebuilds the CSVs from the `master/` sources and
+is **never called at runtime**; the engines themselves are deliberately *not* seeded.
+
+### `host_name` carries the scheme (added 2026-09-24)
+
+Six of the seven engines hardcoded `f"https://{host}"` — 13 sites — so running against a local dev
+server meant editing Python. `interest_engine` had had the right answer since it was written, so
+that function became `engines/url_utils.py` and every engine now uses it: an explicit scheme in
+`host_name` wins, https is only the default. Chosen over adding a separate `scheme` config key,
+because the scheme belongs *to* the host value and a second key can contradict the first. See
+spec §4.1.1.
+
+### Hot reload on by default (added 2026-09-24)
+
+The frontend always had it (Vite HMR). The backend now launches with `uvicorn --reload` from both
+launchers, with `PBI_NO_RELOAD=1` to opt out. Safe to make the default because uvicorn watches
+`*.py` only, so the app's own writes — settings, history, the expectation DB — cannot bounce the
+server mid-run. No new dependency: `watchfiles` ships with `uvicorn[standard]`. See spec §12.5.
+
+### Cross-platform: Docker and macOS launchers (added 2026-09-24)
+
+The app was Windows-only by *launcher*, not by architecture. Two routes now exist and they are
+deliberately different: **Docker** is one image, one process, one port (frontend built at image
+build, served by FastAPI — no Vite, no proxy), while **`Launch.command`** reproduces the Windows
+two-server arrangement natively on macOS. Docker wins when the machine has no Python/Node; the
+native launcher wins behind a corporate VPN, where the container's NAT bridge is the thing most
+likely to fail. One feature does not survive containerisation: Outlook COM email *sending*. Its
+existing `OutlookUnavailable` path already degrades to a warning, so no code changed for it.
+See spec §12.3–12.4.
+
 ### Env switch persists (added 2026-06-22)
 
 Switching environment in the header now writes `active` back to `environments.json` (`PUT /api/config`), so the selection survives a reload — previously it was local React state only.
@@ -233,74 +311,87 @@ Frontend                           Backend
 
 ## File Map
 
+Verified against the tree on 2026-09-24.
+
 ```
-C:\python\PBI_Test_Utility\
-├── CLAUDE.md              ← guidance for Claude Code / contributors (project root)
-├── Setup.bat              ← one-time setup (venv + pip + npm install)
-├── Launch.vbs             ← double-click to start (hidden)
-├── Start-App.ps1          ← backend + frontend launcher (called by Launch.vbs)
-├── Stop-App.vbs           ← double-click to stop
-├── master\
-│   ├── spec.md            ← authoritative requirements
-│   ├── plan.md            ← this file
-│   └── implementation.md  ← what was built, decisions, open items
-├── backend\
-│   ├── main.py
-│   ├── config_manager.py
+PBI_Test_Utility/
+├── CLAUDE.md              <- guidance for Claude Code / contributors
+├── Setup.bat              <- Windows: one-time setup (venv + pip + npm install)
+├── Launch.vbs             <- Windows: double-click to start (hidden)
+├── Start-App.ps1          <- Windows: launcher (uvicorn --reload + Vite)
+├── Stop-App.vbs           <- Windows: double-click to stop
+├── Launch.command         <- macOS: setup-if-needed + start + open browser   (2026-09-24)
+├── Stop.command           <- macOS: stop both servers                        (2026-09-24)
+├── Dockerfile             <- 2-stage build, one image, one port              (2026-09-24)
+├── docker-compose.yml     <- :8000, ./data state mount, TZ
+├── docker-compose.dev.yml <- override: mounts backend/, uvicorn --reload
+├── .dockerignore
+├── .gitattributes         <- LF for *.command/*.sh, CRLF for *.bat/*.ps1/*.vbs
+├── data/                  <- Docker state mount (settings, history, expectation store)
+├── master/
+│   ├── spec.md            <- authoritative requirements
+│   ├── plan.md            <- this file
+│   ├── implementation.md  <- what was built, decisions, open items, dated changelog
+│   ├── MUNIS_DATA.csv     <- munis source analysis (git-ignored; 95 deals / 2,142 maturities)
+│   └── LIST_LOOKUP_TROWE-209_MUNIS_INSERT.csv  <- the 4 platform munis vocabularies (git-ignored)
+├── backend/
+│   ├── main.py                    <- routers + static mount of frontend/dist when present
+│   ├── paths.py                   <- STATE_DIR = $PBI_STATE_DIR or backend/   (2026-09-24)
+│   ├── config_manager.py          <- load/save, {BACKEND_DIR} resolution, first-run seeding
 │   ├── run_manager.py
-│   ├── history_manager.py     ← run-history JSON store (add/list + retention)
-│   ├── expected_store.py      ← util_* mirror tables (SQLite) — DDL/insert/export (added 2026-08-06)
-│   ├── comparators.py         ← [planned §18] normalizers, row matching, scoring, assertions
-│   ├── db_reader.py           ← [planned §18] read-only Postgres fetch of the four app tables
-│   ├── environments.json
-│   ├── history.json           ← persisted run records (created on first run)
+│   ├── history_manager.py         <- run-history JSON store (add/list + retention)
+│   ├── expected_store.py          <- util_* mirror tables (SQLite) - DDL/insert/export
+│   ├── comparators.py             <- normalizers, row matching, scoring
+│   ├── db_reader.py               <- read-only Postgres fetch of the four app tables
+│   ├── email_ingest.py            <- .msg/.eml/.html parsing for uploaded email sets (§19)
+│   ├── label_form.py              <- labelling-form prefill (§19.23)
+│   ├── environments.example.json  <- TRACKED template: no passwords, "Local" env (2026-09-24)
+│   ├── environments.json          <- real settings - NOT tracked, seeded from the example
+│   ├── history.json               <- persisted run records (created on first run)
 │   ├── requirements.txt
-│   ├── expected\              ← pbi_util.db (created on first capture)
-│   ├── reference\
-│   │   ├── bonds\ · loans\
-│   │   └── db_schema\             ← *_fields_size.csv + field_map.csv + vocab_map.csv (added 2026-08-06)
-│   ├── engines\
-│   │   ├── bonds_engine.py
-│   │   ├── loans_engine.py
-│   │   ├── interest_engine.py
-│   │   ├── csv_engine.py          ← CSV/Excel → JSON publisher (added 2026-06-26)
-│   │   ├── email_builder.py       ← broker-email HTML renderers + boilerplate/random pools (added 2026-07-21)
-│   │   ├── outlook_sender.py      ← Outlook COM send / .msg save (added 2026-07-21)
-│   │   ├── expected_writer.py     ← [planned §18] payload → expected table rows (pure)
-│   │   └── loan_utils\
-│   │       ├── cusip.py
-│   │       └── dates.py
-│   └── routers\
-│       ├── _shared.py
-│       ├── bonds.py
-│       ├── loans.py
-│       ├── interest.py
-│       ├── csv_upload.py          ← multipart upload endpoint (added 2026-06-26)
-│       ├── config_router.py
-│       ├── compare_router.py      ← [planned §18] /api/compare
-│       └── history_router.py      ← GET / POST /api/history
-├── frontend\
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.js
-│   └── src\
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── index.css
-│       ├── api.js
-│       ├── hooks\
-│       │   └── useRunState.js
-│       ├── components\
-│       │   ├── Header.jsx
-│       │   ├── LogViewer.jsx
-│       │   └── LiveOutput.jsx
-│       └── tabs\
-│           ├── BondsTab.jsx
-│           ├── LoansTab.jsx
-│           ├── InterestTab.jsx
-│           ├── CsvUploadTab.jsx   ← CSV Upload tab (added 2026-06-26)
-│           ├── EmailCompareTab.jsx ← [planned §18] Email Compare tab (Bonds · Loans · ABS · Munis)
-│           ├── HistoryTab.jsx
-│           └── SettingsTab.jsx
-└── (root launch scripts listed at top)
+│   ├── expected/                  <- pbi_util.db (created on first capture)
+│   ├── reference/
+│   │   ├── bonds/ · loans/
+│   │   ├── securitized/           <- 10 CSVs + _generate.py (§20.5)
+│   │   ├── munis/                 <- 7 CSVs + _generate.py (§21.5)
+│   │   └── db_schema/             <- *_fields_size.csv + field_map.csv + vocab_map.csv
+│   ├── engines/
+│   │   ├── url_utils.py           <- host_name -> URL; the only place https is a default (2026-09-24)
+│   │   ├── bonds_engine.py · loans_engine.py
+│   │   ├── securitized_engine.py  <- ABS four-level tree (§20)
+│   │   ├── munis_engine.py        <- Munis deal tree (§21)
+│   │   ├── interest_engine.py · tig_engine.py · csv_engine.py
+│   │   ├── email_builder.py       <- broker-email HTML renderers
+│   │   ├── outlook_sender.py      <- Outlook COM send (Windows only; degrades to a warning)
+│   │   ├── expected_writer.py     <- payload -> expected table rows (pure)
+│   │   └── loan_utils/            <- cusip.py · dates.py
+│   ├── routers/
+│   │   ├── _shared.py · bonds.py · loans.py · securitized.py · munis.py
+│   │   ├── interest.py · tig_orders.py · csv_upload.py
+│   │   ├── config_router.py · history_router.py
+│   │   └── compare_router.py      <- /api/compare (REST, no SSE)
+│   └── tests/                     <- test_munis · test_abs_slice1 · test_abs_slice2
+│       └── fixtures/                 test_email_ingest · test_label_form · test_upload_flow
+└── frontend/
+    ├── index.html · package.json · vite.config.js
+    ├── dist/                      <- production build; served by FastAPI in Docker
+    └── src/
+        ├── main.jsx · App.jsx · index.css · api.js
+        ├── hooks/useRunState.js
+        ├── components/            <- Header · LogViewer · LiveOutput · LabelForm
+        └── tabs/
+            ├── BondsTab · LoansTab · SecuritizedTab · MunisTab
+            ├── InterestTab · TigOrdersTab · CsvUploadTab
+            └── EmailCompareTab · HistoryTab · SettingsTab
 ```
+
+> **There is no `components/compare/` directory.** CLAUDE.md describes
+> `CalibrationPanel.jsx` / `OverridesPanel.jsx` / `KnownDifferencesPanel.jsx` / `shared.js`; none of
+> them exist in the tree, and nothing imports them. That is consistent with decision **D9**
+> (2026-08-07, recorded above), which cut the calibration / override / known-differences loop —
+> the CLAUDE.md text describing them was never rolled back. `EmailCompareTab.jsx` imports exactly
+> one component, `../components/LabelForm.jsx`.
+
+> `graphify-out/` (generated, ~2 MB, git-ignored) holds the knowledge graph. Refresh with
+> `graphify update .` **from the repo root only** — from a subdirectory it silently rebuilds
+> scoped to that subtree and discards the rest.

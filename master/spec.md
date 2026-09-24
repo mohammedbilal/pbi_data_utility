@@ -75,7 +75,7 @@ Environments are stored in `backend/environments.json`. There is no `.env` file 
 
 | Field | Type | Description |
 |---|---|---|
-| `host_name` | string | Hostname only (no protocol). e.g. `qa-trowe-pbi2.cddev.genesis.global` |
+| `host_name` | string | Host, **optionally with a scheme and port**. `qa-trowe-pbi2.cddev.genesis.global` (https assumed) or `http://localhost:8080`. See 4.1.1 |
 | `verify_ssl` | bool | Whether to verify SSL certificates |
 | `credentials.bonds_loans.username` | string | Username for bonds and loans auth |
 | `credentials.bonds_loans.password` | string | Password for bonds and loans auth |
@@ -84,14 +84,69 @@ Environments are stored in `backend/environments.json`. There is no `.env` file 
 | `credentials.tig_orders.username` | string | Username for TIG order-creation auth |
 | `credentials.tig_orders.password` | string | Password for TIG order-creation auth |
 
+#### 4.1.1 `host_name` carries the scheme (changed 2026-09-24)
+
+**https is the default, not a rule.** Give `host_name` an explicit scheme and that scheme is
+used, port included:
+
+| `host_name` | URL the engines call |
+|---|---|
+| `qa-trowe-pbi2.cddev.genesis.global` | `https://qa-trowe-pbi2.cddev.genesis.global/…` |
+| `localhost:8080` | `https://localhost:8080/…` — no scheme given ⇒ https |
+| `http://localhost:8080` | `http://localhost:8080/…` |
+| `https://localhost:8443` | `https://localhost:8443/…` |
+
+Until 2026-09-24 only Interest Capture honoured this; the other six engines hardcoded
+`f"https://{host}"` in **13 places**, so pointing the app at a local dev server meant editing
+Python and remembering to put it back. The rule now lives in one place —
+`engines/url_utils.py` (`normalize_host` / `join_url`) — and all seven engines use it.
+
+Two properties to preserve when touching that module:
+
+- **An empty or unparseable `host_name` raises `ValueError`**, so a typo in Settings fails with
+  a clear message instead of a confusing connection error. Because of that, engines build their
+  publish URL **only on the non-dry-run path** — a dry run must work with no host configured at
+  all, which is what `tests/test_munis.py` exercises.
+- **`join_url` passes the path through as written.** Several engines post to `/gwf//EVENT_X`
+  with a doubled slash, which the server accepts; Bonds and CSV Upload collapse it in their own
+  `_normalize_url`. That difference is deliberate, not an inconsistency to unify.
+
 ### 4.2 Reference directories
 
 Stored at the top level of `environments.json` (not per-environment — they are filesystem paths):
 
 | Key | Default | Description |
 |---|---|---|
-| `reference_dirs.bonds` | `C:\python\LATEST_PBI_JSON\reference` | Bonds CSV reference data |
-| `reference_dirs.loans` | `C:\python\PBI_LOAN_JSON_PUBLISHER_V1\reference_data` | Loans CSV reference data |
+| `reference_dirs.bonds` | `{BACKEND_DIR}/reference/bonds` | Bonds CSV reference data |
+| `reference_dirs.loans` | `{BACKEND_DIR}/reference/loans` | Loans CSV reference data |
+| `reference_dirs.securitized` | `{BACKEND_DIR}/reference/securitized` | ABS CSV reference data (10 files, §20.5) |
+| `reference_dirs.munis` | `{BACKEND_DIR}/reference/munis` | Munis CSV reference data (7 files, §21.5) |
+
+`{BACKEND_DIR}` is expanded by `config_manager._resolve`. These were absolute
+`C:\python\...` paths until 2026-09-24; the placeholder makes one file correct on Windows, on
+macOS, in the container, and in a checkout at any path.
+
+### 4.2.1 `environments.json` is not in git (changed 2026-09-24)
+
+The file holds credentials *and* is the one file every developer must edit to run anything, so a
+tracked copy guarantees both secret churn and permanent merge conflicts on it. What is tracked is
+**`backend/environments.example.json`** — same shape, every password blank, plus a ready-made
+`Local` entry (`http://localhost:8080`, `verify_ssl: false`) which is the `active` one.
+
+First start seeds the real file from the first of these that exists:
+
+1. `$PBI_STATE_DIR/environments.json` — already set up, nothing to do
+2. `backend/environments.json` — an existing local copy, so upgrading breaks nobody
+3. `backend/environments.example.json` — the tracked template
+4. `config_manager._defaults()` — last resort
+
+A fresh clone therefore starts pointed at `http://localhost:8080` over plain http with **no file
+edits at all**. Adding a real environment means filling in passwords locally; the file is
+git-ignored, so they never leave the machine — and the container no longer bakes them into an
+image layer, because `.dockerignore` excludes it and the image seeds from the example.
+
+> The credentials committed before this change remain in git history. Rotating them is a separate
+> job that this change does not do.
 
 ### 4.3 Switching environments
 
@@ -455,6 +510,131 @@ The launcher is tuned to reach a usable browser in ~1.5–2s (both servers indiv
 - **Concurrent port wait** — `Wait-ForPorts` polls 8000 and 5173 together (previously it waited for the backend fully, then the frontend) so total wait ≈ the slower server, not the sum.
 - **Fine poll granularity** — readiness is polled every 150ms (was every 1s), so a server that binds in ~0.3s is detected almost immediately instead of at the next whole second.
 - **Lazy WinForms load** — see §12.1.
+
+### 12.3 macOS launchers
+
+macOS gets the same double-click experience as Windows via `.command` files, which Finder runs
+in Terminal:
+
+| Script | Windows equivalent |
+|---|---|
+| `Launch.command` | `Setup.bat` + `Launch.vbs` + `Start-App.ps1`, folded into one |
+| `Stop.command` | `Stop-App.vbs` |
+
+There is deliberately **no `Setup.command`**. The Windows split exists because `Setup.bat` is
+slow and `Launch.vbs` is silent; a `.command` file runs in a visible Terminal, so `Launch.command`
+can create the venv, `pip install` and `npm install` on first run with the progress on screen,
+and launch straight after. Subsequent launches skip it — the test is `backend/.venv/bin/uvicorn`
+being executable and `frontend/node_modules` existing.
+
+Otherwise it is a direct port of §12.1–12.2 and carries the same guards:
+
+- **PATH** — a Finder-launched script does not read your shell profile, so `/opt/homebrew/bin`
+  and `/usr/local/bin` are prepended. Same failure mode as the stale-registry PATH on Windows.
+- **Readiness** — polls `http://localhost:{8000,5173}` with `curl` every 150ms, both together,
+  45s budget. Using `localhost` rather than an explicit address covers the IPv4/IPv6 split
+  (§12.1) for free, since Vite binds `::1` and uvicorn `127.0.0.1`.
+- **Direct Vite** — `node node_modules/vite/bin/vite.js`, falling back to `npm run dev`.
+- **Errors** — `osascript -e 'display dialog …'` in place of the WinForms `MessageBox`.
+
+Stopping uses the PIDs written to `.logs/{backend,frontend}.pid`, then falls back to
+`lsof -ti tcp:PORT` so a server started by hand is cleaned up too. Server output goes to
+`.logs/*.log` (git-ignored) — that is where to look when launch times out.
+
+**Line endings are enforced by `.gitattributes`** (`*.command text eol=lf`). This repo is
+developed on Windows with `core.autocrlf=true`; a CRLF checkout fails on macOS with
+`bad interpreter: /bin/bash^M`. The executable bit is likewise in the index (mode `100755`,
+set with `git update-index --chmod=+x`) because `core.filemode` is `false` on Windows — without
+it Finder opens the file in a text editor instead of running it.
+
+### 12.4 Docker (macOS / Linux / Windows)
+
+The `.vbs`/`.bat`/`.ps1` launchers are Windows-only. For any other OS the app ships a
+container, which is the *same* app under a different arrangement:
+
+| | Windows launcher | Docker |
+|---|---|---|
+| Processes | uvicorn `:8000` + Vite `:5173` | uvicorn `:8000` only |
+| Frontend | Vite dev server, hot reload | built once at image build, served by FastAPI |
+| `/api` reaches the backend via | Vite's dev proxy | same origin — no proxy |
+| Browser | `http://localhost:5173` | `http://localhost:8000` |
+
+```bash
+docker compose up --build     # then open http://localhost:8000
+```
+
+**Single-port mode.** `main.py` mounts `frontend/dist` at `/` with `StaticFiles(html=True)` —
+*after* the routers, so every `/api/...` route still wins. The mount is conditional on the
+directory existing, so the Windows dev flow (where `dist` may be absent or stale) is unaffected
+and still uses Vite. SSE is served directly by FastAPI, with no proxy in the path.
+
+**State directory (`PBI_STATE_DIR`).** Everything the app *writes* — `environments.json`,
+`history.json`, and the `expected/` SQLite store — resolves through `backend/paths.py`.
+It defaults to the backend folder, i.e. exactly where those files have always lived, so
+Windows behaviour is byte-identical. The container sets it to `/app/data`, bind-mounted to
+`./data`, so settings and captures survive `docker compose up --build`. `environments.json`
+is **seeded** from the copy baked into the image on first start; to change the seed, edit
+`backend/environments.json` and rebuild.
+
+**`reference_dirs` are path-independent.** They use the existing `{BACKEND_DIR}` placeholder
+(`config_manager._resolve`) rather than absolute `C:\python\...` paths, so the same
+`environments.json` resolves correctly on Windows, in the container, and in a checkout at any
+path.
+
+**What does not work in the container.** Outlook email *sending*
+(`engines/outlook_sender.py`) is Windows COM and requires a locally-installed Outlook Classic
+profile. In the container `send_via_outlook` raises `OutlookUnavailable`, which the engines
+already handle as a `warn` log line (`✉ Email skipped`) — the run continues and, per §18,
+**expectation capture still fires**, because it is deliberately independent of send success.
+So email *generation*, capture, upload (`.msg` parsing via `extract-msg`, which is pure Python)
+and the whole Email Compare surface work; only the "send it to my inbox" step does not.
+
+**Credentials travel with the image.** `COPY backend/ /app/backend/` bakes
+`environments.json` — plain-text test-env passwords included (§4) — into the image layer. That
+is no worse than the repo, which checks the same file in, but it means the image must be treated
+like the repo: local builds and internal registries only, never a public one.
+
+**Timezone.** A few engines date-stamp deals off the local date (`date.today()`). Containers
+default to UTC, so `compose.yml` passes a `TZ` variable — set it to your own zone if the UTC
+day could differ from yours.
+
+---
+
+### 12.5 Hot reload — the developer loop (added 2026-09-24)
+
+Neither server needs restarting to pick up a code change.
+
+| Layer | Mechanism | Status |
+|---|---|---|
+| Frontend | Vite HMR | **always on** — it is what `npm run dev` does, and has been since day one |
+| Backend | `uvicorn --reload` | on by default in `Start-App.ps1` and `Launch.command` |
+
+`--reload` costs no new dependency: `watchfiles` already ships with the `uvicorn[standard]`
+in `requirements.txt`.
+
+**Only `*.py` triggers a backend reload.** That is uvicorn's `FileFilter` default
+(`default_includes = ["*.py"]`, `uvicorn/supervisors/watchfilesreload.py`) and it matters here
+more than usual — the backend writes `environments.json` on every Settings save, `history.json`
+on every completed run, and `expected/pbi_util.db` on every capture. If any of those triggered a
+restart the app would bounce itself mid-run. Verified against the installed uvicorn:
+
+```
+includes: ['*.py']
+  main.py                     -> reload: True
+  engines/bonds_engine.py     -> reload: True
+  environments.json           -> reload: False
+  history.json                -> reload: False
+  expected/pbi_util.db        -> reload: False
+```
+
+Set **`PBI_NO_RELOAD=1`** to turn it off — worth doing if the checkout lives on a network drive
+or OneDrive, where file watching can be pathological.
+
+In Docker, the base image serves a *static* frontend build, so neither side reloads.
+`docker-compose.dev.yml` mounts `backend/` and adds `--reload` for the backend. The frontend is
+deliberately not hot-reloaded there: the runtime image is `python:3.12-slim` and has no node, so
+there is no Vite to run — for frontend work use `npm run dev` on the host, which is faster and is
+what the launchers already do.
 
 ---
 

@@ -18,6 +18,7 @@ from engines.email_builder import build_email
 from engines.loan_utils.cusip import generate_cusip, generate_roll_cusips
 from engines.loan_utils.dates import generate_deal_dates, generate_tranche_dates
 from engines.outlook_sender import OutlookUnavailable, send_via_outlook
+from engines.url_utils import join_url
 
 fake = Faker()
 
@@ -204,7 +205,7 @@ class DataGenerator:
 
 
 def _login(host: str, username: str, password: str, verify_ssl: bool) -> str:
-    auth_url = f"https://{host}/sm/event-login-auth"
+    auth_url = join_url(host, "/sm/event-login-auth")
     body = {"MESSAGE_TYPE": "TXN_LOGIN_AUTH", "SERVICE_NAME": "AUTH_MANAGER",
             "DETAILS": {"USER_NAME": username, "PASSWORD": password}}
     headers = {"Content-Type": "application/json", "SOURCE_REF": "12345",
@@ -396,8 +397,9 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
         return
 
     # ── Post events ──────────────────────────────────────────────────────────
-    publish_url = f"https://{host}/gwf//EVENT_CREATE_NEW_LOAN_ISSUANCE"
-    deal_query_url = f"https://{host}/gwf/ALL_LOAN_DEAL"
+    # Built only when they will be used: a dry run must work with no host configured.
+    publish_url = join_url(host, "/gwf//EVENT_CREATE_NEW_LOAN_ISSUANCE") if not dry_run else ""
+    deal_query_url = join_url(host, "/gwf/ALL_LOAN_DEAL") if not dry_run else ""
     pub_headers = {
         "Content-Type": "application/json", "Accept": "*/*",
         "SOURCE_REF": "12345", "Cache-Control": "no-cache",

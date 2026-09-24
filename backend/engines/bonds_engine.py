@@ -20,6 +20,7 @@ import expected_store
 from engines.email_builder import build_email
 from engines.expected_writer import build_expected
 from engines.outlook_sender import OutlookUnavailable, send_via_outlook
+from engines.url_utils import join_url
 
 _TIMEOUT = object()
 
@@ -683,7 +684,7 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
         else:
             log("DRY RUN — generating payloads only, nothing will be sent.", "warn")
     else:
-        auth_url = f"https://{host}/sm/event-login-auth"
+        auth_url = join_url(host, "/sm/event-login-auth")
         log(f"Authenticating as {username} ...")
         try:
             auth_resp = requests.post(
@@ -714,7 +715,8 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
         return
 
     # ── Setup ─────────────────────────────────────────────────────────────────
-    url = _normalize_url(f"https://{host}/gwf//event_new_issuance_data")
+    # Built only when it will be used: a dry run must work with no host configured.
+    url = _normalize_url(join_url(host, "/gwf//event_new_issuance_data")) if not dry_run else ""
     headers = {
         "Content-Type": "application/json",
         "Accept": "*/*",

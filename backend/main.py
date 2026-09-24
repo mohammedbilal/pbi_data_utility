@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from routers import (bonds, loans, interest, config_router, history_router,
                      csv_upload, tig_orders, compare_router, securitized,
@@ -30,3 +33,12 @@ app.include_router(compare_router.router, prefix="/api/compare",    tags=["compa
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+# Single-port mode (Docker): if the frontend has been built, serve it from here
+# instead of the Vite dev server, so there is no :5173 and no /api proxy. Mounted
+# last so every /api route above still wins. On Windows dev this directory is
+# usually absent and the mount is simply skipped.
+_UI_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if _UI_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=_UI_DIST, html=True), name="ui")

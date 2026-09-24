@@ -16,7 +16,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-HISTORY_PATH = Path(__file__).parent / "history.json"
+from paths import STATE_DIR
+
+HISTORY_PATH = STATE_DIR / "history.json"
 
 # Retention: keep at most this many records, and drop anything older than
 # this many days. The UI advertises "last 30 days".

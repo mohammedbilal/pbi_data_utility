@@ -35,9 +35,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-BACKEND_DIR = Path(__file__).parent
+from paths import BACKEND_DIR, STATE_DIR
+
 SCHEMA_DIR = BACKEND_DIR / "reference" / "db_schema"
-DEFAULT_STORE_PATH = BACKEND_DIR / "expected" / "pbi_util.db"
+DEFAULT_STORE_PATH = STATE_DIR / "expected" / "pbi_util.db"
 
 # app table (as exported)  ->  mirror table
 MIRROR_TABLES: Dict[str, str] = {

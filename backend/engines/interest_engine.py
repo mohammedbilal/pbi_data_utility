@@ -10,9 +10,9 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
-from urllib.parse import urlparse
 
 import requests
+from engines.url_utils import join_url, normalize_host
 
 DEFAULT_AUTH_PATH = "/sm/event-login-auth"
 DEFAULT_INTEREST_PATH = "/gwf//event-interest-capture"
@@ -31,26 +31,10 @@ def _deep_get(data: Dict[str, Any], path: Sequence[str]) -> Optional[Any]:
     return current
 
 
-def _normalize_host(host_name: str) -> str:
-    host = (host_name or "").strip()
-    if not host:
-        raise ValueError("host_name is empty")
-    if "://" not in host:
-        host = f"https://{host}"
-    parsed = urlparse(host)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise ValueError(f"Invalid host_name: {host_name}")
-    return f"{parsed.scheme}://{parsed.netloc}"
-
-
-def _join_url(host_name: str, path: str) -> str:
-    base = _normalize_host(host_name)
-    raw = (path or "").strip()
-    if not raw:
-        return base
-    if not raw.startswith("/"):
-        raw = f"/{raw}"
-    return f"{base}{raw}"
+# Moved to engines/url_utils.py on 2026-09-24 so the other six engines could use it
+# too — this engine was the only one that ever honoured a scheme in host_name.
+_normalize_host = normalize_host
+_join_url = join_url
 
 
 @dataclass

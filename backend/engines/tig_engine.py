@@ -19,6 +19,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 import requests
+from engines.url_utils import join_url
 
 DEFAULT_AUTH_PATH = "/sm/event-login-auth"
 DEFAULT_ORDER_PATH = "/gwf/EVENT_TIG_CREATE_ORDER"
@@ -122,7 +123,7 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
     if dry_run:
         log("DRY RUN — generating payloads only, nothing will be sent.", "warn")
     else:
-        auth_url = f"https://{host}{DEFAULT_AUTH_PATH}"
+        auth_url = join_url(host, DEFAULT_AUTH_PATH)
         log(f"Authenticating as {username} ...")
         try:
             auth_resp = requests.post(
@@ -171,7 +172,8 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
         }
 
     # ── Post orders ───────────────────────────────────────────────────────────
-    order_url = f"https://{host}{DEFAULT_ORDER_PATH}"
+    # Built only when it will be used: a dry run must work with no host configured.
+    order_url = join_url(host, DEFAULT_ORDER_PATH) if not dry_run else ""
     headers = {
         "Content-Type": "application/json",
         "Accept": "*/*",

@@ -31,6 +31,23 @@ This is a Windows, no-terminal app launched from this folder by double-click:
 
 `Launch.vbs` runs `Start-App.ps1` hidden, which starts both servers, waits for ports, and opens `http://localhost:5173`.
 
+**macOS** — double-click `Launch.command` (Finder runs `.command` files in Terminal); `Stop.command`
+stops it. It is `Setup.bat` + `Launch.vbs` + `Start-App.ps1` in one file — first run builds the venv
+and installs packages, then launches; later runs skip straight to launching. Same two servers, same
+ports, same `http://localhost:5173` as Windows. Two things keep it working from a Windows checkout,
+both in `.gitattributes` / the git index: **LF endings** (`*.command text eol=lf` — CRLF gives
+`bad interpreter: /bin/bash^M`) and the **exec bit** (mode `100755`, since `core.filemode=false`
+here). See spec §12.3.
+
+**Docker (macOS / Linux / any OS)** — `docker compose up --build`, then `http://localhost:8000`.
+One container, one process, one port: the frontend is built at image-build time and served by
+FastAPI (`main.py` mounts `frontend/dist` at `/` *after* the routers, only if it exists), so there
+is no Vite and no `/api` proxy. Mutable state (`environments.json`, `history.json`, `expected/`)
+resolves through `backend/paths.py` → `$PBI_STATE_DIR`, which **defaults to the backend folder**,
+so the Windows flow is unchanged; compose points it at bind-mounted `./data`. **Outlook email
+sending does not work in the container** (Windows COM) — the engines log `✉ Email skipped` and
+carry on, and expectation capture still fires. See spec §12.4.
+
 **Manual dev (for debugging):**
 ```powershell
 # Backend — MUST run from backend/ (absolute imports; app is main:app)
@@ -52,7 +69,9 @@ npm run build      # production build sanity check (no terminal use in normal fl
   - emits `{"type":"summary","success","failed","total"}` then `None` (sentinel) when done.
 - **Routers are thin** — `routers/_shared.py` handles run creation, the SSE stream, and stop. New per-tool params just flow through the `params` dict; no router changes needed.
 - **Log levels** rendered by `LogViewer`: `info`, `success`, `warn`, `error` (mapped to Operator colours in `index.css`).
-- **Config** — everything (host, credentials, `verify_ssl`, reference dirs, tool defaults) lives in `backend/environments.json`, edited via the Settings tab / `PUT /api/config`. No `.env` files. Passwords are plain text (test envs only). The header env switch persists `active` via `PUT /api/config`.
+- **Config** — everything (host, credentials, `verify_ssl`, reference dirs, tool defaults) lives in `backend/environments.json`, edited via the Settings tab / `PUT /api/config`. No `.env` files. Passwords are plain text (test envs only). The header env switch persists `active` via `PUT /api/config`. **`environments.json` is git-ignored** (2026-09-24) — the tracked file is `environments.example.json` (no passwords, ships a `Local` entry on `http://localhost:8080`), and `config_manager.SEEDS` seeds the real one on first start from: existing local copy → example → `_defaults()`. Reference dirs use the `{BACKEND_DIR}` placeholder, never absolute paths.
+- **URLs** — `host_name` **carries the scheme**: an explicit `http://`/`https://` wins, https is only the default. One implementation, `engines/url_utils.py` (`normalize_host` / `join_url`); never write `f"https://{host}"` again. Two invariants: it **raises on an empty host**, so engines must build publish URLs only on the non-dry-run path (a dry run has to work with no environment — this is what broke `test_munis` when the helper landed); and `join_url` **passes the path through as written**, so `/gwf//EVENT_X` keeps its doubled slash. See spec §4.1.1.
+- **Hot reload** — Vite HMR (frontend) has always been on; the backend now launches `uvicorn --reload` from both launchers, `PBI_NO_RELOAD=1` to opt out. Safe as a default because uvicorn watches `*.py` only, so Settings saves, history writes and expectation-DB writes cannot bounce the server mid-run. See spec §12.5.
 - **Reference data** — CSVs under `backend/reference/{bonds,loans,securitized}/`; all optional, with hardcoded fallbacks if missing.
 - **Expectation capture** (spec §18, Bonds only) — when email generation is on, `bonds_engine.emit_email` also writes the *expected* DB state into the `util_*` SQLite mirror (`expected_store.py` + `engines/expected_writer.py`). It is SQLite-only, works in `dry_run`/`email_only`, fires whether or not the send succeeded, and **must never fail a run** — every path is wrapped in `try/except` that logs a `warn`. `build_email` therefore returns **three** values: `(subject, body_html, meta)`, where `meta` carries `rendered_fields` (what the format actually printed) and `gap_fill` (the template's random picks, which the expectation needs).
 - **Comparison surface** (spec §18.11) — `routers/compare_router.py` at `/api/compare` scores a capture run: `db_reader.py` pulls the rows the pipeline actually produced (**read-only** — `SELECT` with bound params, `SET TRANSACTION READ ONLY`, statement timeout, row cap, and a lazy `psycopg` import so a missing driver degrades to CSV import rather than erroring), `comparators.compare_run` judges them, and the pass is persisted to `util_comparison` / `util_comparison_field`. Two rules when extending it: load the field/vocab maps **once per request** with `effective_map()` and pass them as `maps=` (the comparator runs per row pair), and **never coerce a value** — everything is TEXT on both sides and the comparator absorbs `'True'`/`'true'`, `1000.00000`/`1000` and epoch-ms/ISO dates. `/compare` is idempotent on `(util_run_id, llm_run_id, against)`. The **Email Compare** tab (`EmailCompareTab.jsx`) is the face of it — plain REST, no SSE, since a compare pass is one request rather than a run.

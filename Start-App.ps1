@@ -61,8 +61,15 @@ if (-not (Test-Port 8000)) {
         Show-Error "Backend not set up.`nPlease run Setup.bat first."
         exit 1
     }
+    # --reload restarts the backend when a .py file changes, so an edit needs no
+    # relaunch. Only *.py triggers it (uvicorn's FileFilter default), so a Settings
+    # save or a history write will not restart the server mid-run. Set
+    # PBI_NO_RELOAD=1 to turn it off — worth doing if the checkout lives on a
+    # network drive or OneDrive, where file watching can be pathological.
+    $uvArgs = @("main:app", "--host", "127.0.0.1", "--port", "8000")
+    if ($env:PBI_NO_RELOAD -ne "1") { $uvArgs += "--reload" }
     Start-Process -FilePath $uvicorn `
-        -ArgumentList "main:app", "--host", "127.0.0.1", "--port", "8000" `
+        -ArgumentList $uvArgs `
         -WorkingDirectory $backend `
         -WindowStyle Hidden
 }

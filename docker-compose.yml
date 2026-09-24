@@ -1,0 +1,16 @@
+services:
+  pbi:
+    build: .
+    image: pbi-test-utility
+    container_name: pbi-test-utility
+    ports:
+      - "8000:8000"
+    volumes:
+      # Settings, run history and the expectation store. Seeded from the image on
+      # first start; edit backend/environments.json and rebuild to change the seed.
+      - ./data:/app/data
+    environment:
+      # Engines that date-stamp deals use the local date — match your own clock,
+      # or the container's UTC day can be one ahead/behind yours.
+      - TZ=${TZ:-Europe/London}
+    restart: unless-stopped

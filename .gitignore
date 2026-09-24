@@ -30,3 +30,12 @@ master/MUNIS_DATA.csv
 
 
 *.bak-*
+# Docker runtime state (settings, history, expectation store)
+/data/*
+!/data/.gitkeep
+
+# macOS launcher logs
+/.logs/
+
+# Local credentials — seeded from backend/environments.example.json on first run.
+/backend/environments.json

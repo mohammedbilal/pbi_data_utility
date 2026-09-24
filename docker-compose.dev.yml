@@ -1,0 +1,19 @@
+# Development override — backend auto-reload in the container.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Mounts backend/ from the host and runs uvicorn --reload, so a .py edit restarts
+# the server with no rebuild and no restart. Only *.py triggers it, so a Settings
+# save or a history write will not bounce the server mid-run.
+#
+# The frontend is deliberately NOT hot-reloaded here: the runtime image is
+# python:3.12-slim and has no node, so there is no Vite to run. For frontend work
+# run `npm run dev` on the host (port 5173, HMR, proxies /api to :8000) — that is
+# what the Windows and macOS launchers do and it is faster than a container.
+# The container's own :8000 keeps serving the static build from image-build time.
+services:
+  pbi:
+    volumes:
+      - ./data:/app/data
+      - ./backend:/app/backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload

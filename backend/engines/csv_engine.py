@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 import requests
+from engines.url_utils import join_url
 
 _SENTINEL_DATE = "00-01-1900"
 
@@ -35,7 +36,7 @@ def _normalize_url(url: str) -> str:
 
 
 def _login(host_name: str, username: str, password: str, verify_ssl: bool) -> str:
-    url = f"https://{host_name}/sm/event-login-auth"
+    url = join_url(host_name, "/sm/event-login-auth")
     payload = {
         "MESSAGE_TYPE": "TXN_LOGIN_AUTH",
         "SERVICE_NAME": "AUTH_MANAGER",
@@ -226,7 +227,7 @@ def run_csv_upload(
             _log(log_queue, "info", "Authenticating…")
             token = _login(host_name, username, password, verify_ssl)
             _log(log_queue, "success", "Authenticated.")
-            url = _normalize_url(f"https://{host_name}/gwf//event_new_issuance_data")
+            url = _normalize_url(join_url(host_name, "/gwf//event_new_issuance_data"))
             session = requests.Session()
             session.verify = verify_ssl
             req_headers = {
