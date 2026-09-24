@@ -371,7 +371,10 @@ def _build_tranche(ref: RefData, issuer: str, ticker: str,
     dates = _future_dates(tenor, freq)
     coupon_type = coupon_type_override or random.choice(["Fixed", "Float"])
     lo, hi = random.choice(ref.ipts_ranges)
-    if coupon_type == "Fixed":
+    if coupon_type == "Prelim":
+        # Prelim carries no pricing at all — the app cannot assign the issuance.
+        ipts = ""
+    elif coupon_type == "Fixed":
         ipts = f"{lo:.2f}%-{hi:.2f}%"
     else:
         benchmark = ref.float_benchmarks.get(ccy, f"{ccy} O/N")
@@ -443,7 +446,8 @@ def _pick_issuer(ref: RefData, minter: Optional[_TickerMinter] = None) -> Tuple[
 
 
 def _build_single(ref: RefData, force_currency: Optional[str] = None,
-                  minter: Optional[_TickerMinter] = None) -> Dict[str, Any]:
+                  minter: Optional[_TickerMinter] = None,
+                  coupon_type: Optional[str] = None) -> Dict[str, Any]:
     issuer, ticker = _pick_issuer(ref, minter)
     sector = random.choice(ref.sectors)
     rating = random.choice(ref.ratings)
@@ -453,18 +457,20 @@ def _build_single(ref: RefData, force_currency: Optional[str] = None,
     reg = random.choice(["Reg S", "144A", "144A/Reg S"])
     freq = random.choice(["Annual", "Semi-Annual"])
     return _build_tranche(ref, issuer, ticker, country, sector, rating, exchange,
-                          tenor, reg, freq, force_currency=force_currency)
+                          tenor, reg, freq, coupon_type,
+                          force_currency=force_currency)
 
 
 def _build_multi(ref: RefData, n: int, force_currency: Optional[str] = None,
-                 minter: Optional[_TickerMinter] = None) -> List[Dict[str, Any]]:
+                 minter: Optional[_TickerMinter] = None,
+                 coupon_type_override: Optional[str] = None) -> List[Dict[str, Any]]:
     # One issuer, one ticker, n tranches — the tranches of a deal share both.
     issuer, ticker = _pick_issuer(ref, minter)
     sector = random.choice(ref.sectors)
     rating = random.choice(ref.ratings)
     exchange = random.choice(ref.exchanges)
     country = random.choice(ref.countries)
-    coupon_type = random.choice(["Fixed", "Float"])
+    coupon_type = coupon_type_override or random.choice(["Fixed", "Float"])
     TENOR_POOL = [2, 3, 4, 5, 5.5, 6, 7, 7.5, 8, 9, 10, 12, 12.5, 15, 20, 30]
     tenors = random.sample(TENOR_POOL, min(n, len(TENOR_POOL)))
     if n > len(TENOR_POOL):
@@ -525,6 +531,13 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
 
     dry_run = bool(params.get("dry_run", False))
     force_ccy = (params.get("currency") or "").strip().upper() or None
+    # Blank = today's behaviour: Fixed/Float drawn per tranche (single) or per
+    # deal (multi). "Prelim" pins every tranche and blanks IPTS.
+    coupon_type = (params.get("coupon_type") or "").strip().title() or None
+    if coupon_type and coupon_type not in ("Fixed", "Float", "Prelim"):
+        log(f"Unsupported coupon_type '{coupon_type}' — falling back to "
+            f"random Fixed/Float", "warn")
+        coupon_type = None
 
     # ── Email options ─────────────────────────────────────────────────────────
     # email_mode: "off" (POST only, today's behaviour) | "both" (POST + email)
@@ -739,7 +752,7 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
     for i in range(single):
         if stop_event.is_set():
             break
-        payload = _build_single(ref, force_ccy, minter)
+        payload = _build_single(ref, force_ccy, minter, coupon_type)
         det = payload["DETAILS"]
         tag = f"[SINGLE {i+1}/{single}]"
 
@@ -786,7 +799,7 @@ def _run(params: Dict[str, Any], env: Dict[str, Any],
         if stop_event.is_set():
             break
         n = tranches_plan[j] if j < len(tranches_plan) else tranches_plan[-1]
-        tranches = _build_multi(ref, n, force_ccy, minter)
+        tranches = _build_multi(ref, n, force_ccy, minter, coupon_type)
         det0 = tranches[0]["DETAILS"]
         issuer = det0["ISSUER_NAME"]
         log(f"[MULTI {j+1}/{multi}] {issuer} ({det0['ISSUER_TICKER']}) — {n} tranches")

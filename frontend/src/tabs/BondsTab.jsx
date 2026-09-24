@@ -23,6 +23,9 @@ export default function BondsTab({ config, activeEnvName, prefill, onPrefillCons
   )
   const [sleepMs, setSleepMs] = useState(pf.sleep_ms ?? ls.sleep_ms ?? defaults.sleep_ms ?? 100)
   const [currency, setCurrency] = useState(pf.currency ?? ls.currency ?? '')
+  // Blank keeps the engine's own draw (Fixed/Float); the rest pin every tranche.
+  const [couponType, setCouponType] =
+    useState(pf.coupon_type ?? ls.coupon_type ?? defaults.coupon_type ?? '')
   const [dryRun, setDryRun] = useState(pf.dry_run ?? ls.dry_run ?? false)
   const [emailOn, setEmailOn] = useState(pf.email_on ?? ls.email_on ?? false)
   const [emailOnly, setEmailOnly] = useState(pf.email_only ?? ls.email_only ?? false)
@@ -39,8 +42,8 @@ export default function BondsTab({ config, activeEnvName, prefill, onPrefillCons
   useEffect(() => { if (prefill) onPrefillConsumed?.() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify({ single, multi, tranches, sleep_ms: sleepMs, currency, dry_run: dryRun, email_on: emailOn, email_only: emailOnly, email_format: emailFormat, capture_expected: captureExpected, unique_ticker: uniqueTicker })) } catch {}
-  }, [single, multi, tranches, sleepMs, currency, dryRun, emailOn, emailOnly, emailFormat, captureExpected, uniqueTicker])
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ single, multi, tranches, sleep_ms: sleepMs, currency, coupon_type: couponType, dry_run: dryRun, email_on: emailOn, email_only: emailOnly, email_format: emailFormat, capture_expected: captureExpected, unique_ticker: uniqueTicker })) } catch {}
+  }, [single, multi, tranches, sleepMs, currency, couponType, dryRun, emailOn, emailOnly, emailFormat, captureExpected, uniqueTicker])
 
   const paramsRef = useRef(null)
   const envRef = useRef(activeEnvName)
@@ -53,7 +56,8 @@ export default function BondsTab({ config, activeEnvName, prefill, onPrefillCons
       ts: new Date().toISOString(),
       tool: 'bonds',
       env: envRef.current,
-      params_summary: `${p.single} single · ${p.multi} multi · ${p.tranches_per_multi.join(', ')}`,
+      params_summary: `${p.single} single · ${p.multi} multi · ${p.tranches_per_multi.join(', ')}` +
+        (p.coupon_type ? ` · ${p.coupon_type}` : ''),
       params_raw: p,
       ok: core.ok, fail: core.fail, total: core.total,
       status: core.status, dur_seconds: core.durSeconds,
@@ -70,6 +74,7 @@ export default function BondsTab({ config, activeEnvName, prefill, onPrefillCons
       tranches_per_multi: trancheList.length ? trancheList : [3],
       sleep_ms: Number(sleepMs),
       currency: currency.trim().toUpperCase() || null,
+      coupon_type: couponType,
       dry_run: dryRun,
       email_on: emailOn,
       email_only: emailOnly,
@@ -125,6 +130,24 @@ export default function BondsTab({ config, activeEnvName, prefill, onPrefillCons
               placeholder="random"
               style={{ textTransform: 'uppercase' }} />
             <div className="field-hint">e.g., USD, EUR, GBP</div>
+          </div>
+
+          <div className="field">
+            <label>Coupon type</label>
+            <select value={couponType} onChange={e => setCouponType(e.target.value)}>
+              <option value="">random — Fixed or Float</option>
+              <option value="Fixed">Fixed</option>
+              <option value="Float">Float — benchmark + spread</option>
+              <option value="Prelim">Prelim — no pricing</option>
+            </select>
+            {couponType === 'Prelim' ? (
+              <div className="field-hint" style={{ color: 'var(--attention)' }}>
+                Prelim leaves the issuance <strong>unassigned</strong> in the app, and IPTs
+                are sent blank. Every tranche of every deal in the run is affected.
+              </div>
+            ) : (
+              <div className="field-hint">applies to every tranche in the run</div>
+            )}
           </div>
 
           <div className="field">

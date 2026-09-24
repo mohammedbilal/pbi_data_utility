@@ -2661,3 +2661,53 @@ Fixes:
   is the other way to get this wrong. 9 shapes x 6 repeats = 102 payloads a run, 5 runs clean.
 
 Spec §21.6.13 records the rule; §21.4 gains the parameter.
+
+## Changes — 2026-09-23 — Bonds: coupon type selector (Fixed / Float / Prelim)
+
+**What.** The Bonds tab gained a **Coupon type** dropdown — blank (default), `Fixed`, `Float`,
+`Prelim` — replacing a manual code edit. `bonds_engine.py` had carried two commented-out
+`# coupon_type = "Prelim"` lines (in `_build_tranche` and `_build_multi`) that had to be uncommented
+and the backend restarted to force a Prelim run. Both are gone; the value now arrives as a param.
+
+**Behaviour.**
+
+- **Blank is the default and is behaviour-preserving** — `Fixed`/`Float` drawn per tranche for
+  single deals, once per deal for multi. Prelim is never reached unless chosen.
+- **Prelim blanks `IPTS`** (`ipts = ""`). Worth recording that this is a *change* from the manual
+  toggle: uncommenting the old line let Prelim fall through to the `else` branch, so it silently
+  produced a float-style IPTS (`SOFR + 120bps`). That was incidental, not intended — confirmed with
+  the user, who wanted it blank.
+- **`COUPON_TYPE` is the only field Prelim changes.** No `TRANCHE_STATUS` or other coupling.
+- **Multi-tranche deals are uniform** — the selection is applied at deal level, so a deal can never
+  be half-Prelim.
+- **Unrecognised values warn and fall back** to the random draw rather than failing the run, matching
+  how `securitized_engine` handles its own `coupon_type`.
+
+**Plumbing.** `_build_tranche` already had an unused `coupon_type_override` parameter; `_build_single`
+did not pass one. Threading it through was three signatures and two call sites — no router change,
+per the "new params flow through the `params` dict" convention.
+
+**Why an amber warning and not a confirm dialog.** Prelim leaves the issuance **unassigned in the
+app** — which is the reason the option exists, so blocking it would be wrong. The hint renders in
+`var(--attention)` under the dropdown only while Prelim is selected, matching the existing
+`unique_ticker` warning at the same altitude.
+
+**Email and expectation capture.** Nothing needed changing: all five bond formats already print
+`COUPON_TYPE` verbatim, and `expected_writer._r_benchmark` parses IPTS for the float benchmark —
+with IPTS empty it yields `None`, so `ipts`, `benchmark_for_pricing` and `coupon_index` all land
+NULL rather than erroring. The `notes` column of the two `coupon_type` rows in `field_map.csv` was
+updated to `Fixed | Float | Prelim` for accuracy; it is documentation, not an enforced vocabulary
+(`normalizer` is `ci_text`, and `notes` is carried as free text by `expected_store`).
+
+**Validation.**
+
+- Dry-run smoke over all six inputs (`''`, `Fixed`, `Float`, `Prelim`, `prelim`, `Bogus`): blank gave
+  a mixed draw, the three explicit values pinned all four payloads, lowercase normalised via
+  `.title()`, and `Bogus` warned and fell back.
+- `build_email` + `build_expected` over a Prelim multi-deal in all five formats: `Prelim` present in
+  every body, expectation `coupon_type='Prelim'` with NULL pricing columns, zero warnings.
+- `npm run build` clean. Existing test scripts: `test_abs_slice1` 224, `test_email_ingest` 148,
+  `test_label_form` 125, `test_upload_flow` 106, `test_munis` 102 — all pass.
+- **Pre-existing failure, not introduced here:** `tests/test_abs_slice2.py` raises
+  `KeyError: 'ASSET_TYPE'` at line 434. `ASSET_TYPE` stopped being emitted on the ABS Series in the
+  2026-09-09 deal-type change; the test was not updated with it.

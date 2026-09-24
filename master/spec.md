@@ -116,9 +116,36 @@ POST https://{host_name}/gwf//event_new_issuance_data
 | `tranches_per_multi` | list[int] | [3, 8] | Tranche count per multi-deal (cycles through list) |
 | `sleep_ms` | int | 100 | Milliseconds to sleep between requests |
 | `currency` | string | — | Force every generated tranche into this currency (optional; blank = random per tranche) |
+| `coupon_type` | string | — | `Fixed` \| `Float` \| `Prelim`; blank = the engine's own draw (see §5.2.1) |
 | `dry_run` | bool | false | Generate payloads but do not authenticate or POST |
 
 When `currency` is supplied, both `CURRENCY_CODE` and `TRANCHE_CURRENCY` on every tranche are set to that value instead of being drawn from `ref.currencies`.
+
+### 5.2.1 Coupon type
+
+Blank — the default — leaves the historical behaviour untouched: `_build_tranche` draws
+`Fixed`/`Float` **per tranche** for single deals, and `_build_multi` draws **once per deal** so a
+multi-tranche deal is uniform. Choosing a value pins every tranche in the run, including every
+tranche of every multi-deal.
+
+`COUPON_TYPE` drives `IPTS`, which is derived and never drawn independently:
+
+| `coupon_type` | `COUPON_TYPE` | `IPTS` |
+|---|---|---|
+| blank | `Fixed` or `Float` | as below, per the draw |
+| `Fixed` | `Fixed` | rate range from `ipts.csv`, e.g. `3.25%-3.50%` |
+| `Float` | `Float` | `{benchmark} + {60..180}bps`, benchmark by currency |
+| `Prelim` | `Prelim` | **empty string** — Prelim carries no pricing |
+
+**`Prelim` leaves the issuance unassigned in the app.** That is the point of the option — it is how
+the unassigned-issuance path is exercised — but it means a Prelim run produces deals the app cannot
+classify, so it is never the default; the UI shows an amber warning while it is selected.
+`COUPON_TYPE` is the only field that changes, and nothing else in the payload is conditioned on it.
+
+Unrecognised values log a `warn` and fall back to the random draw rather than failing the run.
+Emails print `Prelim` verbatim in all five bond formats, and expectation capture (§18) stores
+`coupon_type = 'Prelim'` with `ipts`, `benchmark_for_pricing` and `coupon_index` all NULL —
+`_r_benchmark` parses the now-empty IPTS and yields nothing.
 
 ### 5.3 Payload format
 

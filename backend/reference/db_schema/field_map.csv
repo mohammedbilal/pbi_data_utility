@@ -95,7 +95,7 @@ bonds,issuance_data,maturity_date,payload,MATURITY_DATE,1,date_day,date toleranc
 bonds,issuance_data,day_count,payload,DAY_COUNT,2,vocab,
 bonds,issuance_data,coupon_frequency,payload,COUPON_FREQUENCY,2,vocab,Semi-Annual -> Semi Annual
 bonds,issuance_data,coupon,null,,x,,bonds generator has no source for this column
-bonds,issuance_data,coupon_type,payload,COUPON_TYPE,1,ci_text,Fixed | Float
+bonds,issuance_data,coupon_type,payload,COUPON_TYPE,1,ci_text,Fixed | Float | Prelim
 bonds,issuance_data,coupon_index,derived,float benchmark parsed from IPTS; NULL when COUPON_TYPE=Fixed,2,ci_text,
 bonds,issuance_data,spread,null,,x,,bonds generator has no source for this column
 bonds,issuance_data,first_coupon_dt,payload,FIRST_COUPON_DATE,2,date_day,payload key is FIRST_COUPON_DATE
@@ -313,7 +313,7 @@ bonds,issuance,maturity_date,payload,MATURITY_DATE,1,date_day,date tolerance 3 d
 bonds,issuance,day_count,payload,DAY_COUNT,2,vocab,
 bonds,issuance,coupon_frequency,payload,COUPON_FREQUENCY,2,vocab,Semi-Annual -> Semi Annual
 bonds,issuance,coupon,null,,x,,bonds generator has no source for this column
-bonds,issuance,coupon_type,payload,COUPON_TYPE,1,ci_text,Fixed | Float
+bonds,issuance,coupon_type,payload,COUPON_TYPE,1,ci_text,Fixed | Float | Prelim
 bonds,issuance,coupon_index,derived,float benchmark parsed from IPTS; NULL when COUPON_TYPE=Fixed,2,ci_text,
 bonds,issuance,spread,null,,x,,bonds generator has no source for this column
 bonds,issuance,original_issue_discount,null,,x,,bonds generator has no source for this column
